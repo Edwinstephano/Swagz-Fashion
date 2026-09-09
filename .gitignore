@@ -1,0 +1,45 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+backend/venv/
+venv/
+env/
+ENV/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+swagz_pos.db
+
+# Node & Frontend Build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Uploaded Files & Static Assets
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep
+
+# Environment & Config
+.env
+.env.local
+.env.*.local
+
+# Logs & Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+verify.py
+
+# IDE & System Files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

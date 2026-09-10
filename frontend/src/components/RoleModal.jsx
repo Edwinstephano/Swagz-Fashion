@@ -1,7 +1,10 @@
 import React from 'react';
-import { X, ShieldCheck, UserCheck, KeyRound } from 'lucide-react';
+import { X, ShieldCheck, UserCheck, KeyRound, LogOut } from 'lucide-react';
+import swagLogo from '../assets/swag.png';
+import swagzzLogo from '../assets/swagzz.png';
+import swagzzWhiteLogo from '../assets/swagzz_white.png';
 
-export default function RoleModal({ isOpen, onClose, currentUser, onSelectUser }) {
+export default function RoleModal({ isOpen, onClose, currentUser, onSelectUser, onLogout }) {
   if (!isOpen) return null;
 
   const demoUsers = [
@@ -15,8 +18,10 @@ export default function RoleModal({ isOpen, onClose, currentUser, onSelectUser }
       <div className="bg-[#1F2229] border border-[#2A2E39] rounded-2xl w-full max-w-md p-6 shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#2A2E39] pb-4 mb-4">
           <div className="flex items-center space-x-2">
-            <KeyRound className="w-5 h-5 text-[#C9A24B]" />
-            <h3 className="font-heading text-lg font-bold text-white">Switch User / Role</h3>
+            <img src={swagzzWhiteLogo} alt="Swagz Logo" className="h-7 object-contain" />
+            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D]">
+              ROLES
+            </span>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#2A2E39]">
             <X className="w-5 h-5" />
@@ -53,6 +58,20 @@ export default function RoleModal({ isOpen, onClose, currentUser, onSelectUser }
             );
           })}
         </div>
+
+        {/* Log Out Action Button */}
+        {onLogout && (
+          <div className="pt-4 mt-4 border-t border-[#2A2E39]">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="w-full py-2.5 px-4 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 font-bold text-xs hover:bg-red-500/25 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out & Lock Register</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

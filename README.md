@@ -43,16 +43,16 @@ The Print Agent listens on port 9100 to receive print jobs and send formatted ES
 
 ---
 
-### Step 3: Start the FastAPI Backend API (Port 8000)
+### Step 3: Start the FastAPI Backend API (Port 8005)
 
 ```bash
 # Run in Terminal 2:
-./backend/venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+./backend/venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8005 --reload
 ```
 
 ---
 
-### Step 4: Start the React POS Frontend (Port 3000)
+### Step 4: Start the React POS Frontend (Port 3005)
 
 ```bash
 # Run in Terminal 3:
@@ -60,7 +60,7 @@ cd frontend
 npm run dev
 ```
 
-Open your browser at **`http://localhost:3000`** to start using the system!
+Open your browser at **`http://localhost:3005`** to start using the system!
 
 ---
 
@@ -81,13 +81,13 @@ Use these credentials or click the **User Profile Pill** in the top right of the
 ```
 ┌─────────────────────────────────────┐
 │    React 18 + Vite POS Frontend     │  • Menswear POS UI (Ink, Gold & Charcoal theme)
-│         (http://localhost:3000)     │  • Barcode Search, Ticket Cart & Split Payments
+│         (http://localhost:3005)     │  • Barcode Search, Ticket Cart & Split Payments
 └──────────────────┬──────────────────┘
                    │ REST APIs & JWT Auth
                    ▼
 ┌─────────────────────────────────────┐
 │          FastAPI Backend            │  • Auth & Roles (Admin, Manager, Cashier)
-│         (http://localhost:8000)     │  • Products, Variant Matrix, Stock & Invoices
+│         (http://localhost:8005)     │  • Products, Variant Matrix, Stock & Invoices
 └─────────┬─────────────────┬─────────┘
           │                 │ SQL
           │ Print Job       ▼

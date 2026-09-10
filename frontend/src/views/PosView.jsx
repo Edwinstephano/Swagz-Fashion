@@ -260,7 +260,7 @@ export default function PosView({ currentUser, theme }) {
                   setSelectedProductForVariant(p);
                   setIsVariantModalOpen(true);
                 }}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card flex flex-col justify-between cursor-pointer group hover:border-slate-800 transition-all duration-200"
+                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card flex flex-col justify-between cursor-pointer group hover:border-slate-800 transition-all duration-200 card-interactive animate-scale-in"
               >
                 <div>
                   <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">

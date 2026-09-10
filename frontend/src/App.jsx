@@ -7,10 +7,16 @@ import ProductsView from './views/ProductsView';
 import ReturnsView from './views/ReturnsView';
 import ReportsView from './views/ReportsView';
 import PrintersView from './views/PrintersView';
+import AlterationsView from './views/AlterationsView';
+import CustomersView from './views/CustomersView';
+
+import LoginView from './views/LoginView';
 
 const getTabFromPath = (pathname) => {
   const path = (pathname || '').toLowerCase().replace(/\/$/, '');
   if (path.includes('/product')) return 'products';
+  if (path.includes('/alteration')) return 'alterations';
+  if (path.includes('/customer')) return 'customers';
   if (path.includes('/return')) return 'returns';
   if (path.includes('/report')) return 'reports';
   if (path.includes('/setting') || path.includes('/printer')) return 'printers';
@@ -20,6 +26,8 @@ const getTabFromPath = (pathname) => {
 const pathMap = {
   pos: '/pos',
   products: '/products',
+  alterations: '/alterations',
+  customers: '/customers',
   returns: '/returns',
   reports: '/reports',
   printers: '/settings'
@@ -27,16 +35,22 @@ const pathMap = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => getTabFromPath(window.location.pathname));
-  // Default to 'light' mode as requested, and remember user selection in localStorage
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('swagz_pos_theme') || 'light';
   });
   
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Admin Director',
-    username: 'admin',
-    role: 'admin'
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('swagz_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return { name: 'Admin Director', username: 'admin', role: 'admin' };
   });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('token');
+  });
+
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
   useEffect(() => {
@@ -64,9 +78,17 @@ export default function App() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  useEffect(() => {
-    loginAsUser(currentUser.username);
-  }, []);
+  const handleLoginSuccess = (userObj) => {
+    setCurrentUser(userObj);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('swagz_user');
+    setIsAuthenticated(false);
+    setIsRoleModalOpen(false);
+  };
 
   const loginAsUser = async (username) => {
     try {
@@ -79,11 +101,10 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
-        setCurrentUser({
-          name: data.name,
-          username: data.username,
-          role: data.role
-        });
+        const u = { name: data.name, username: data.username, role: data.role };
+        localStorage.setItem('swagz_user', JSON.stringify(u));
+        setCurrentUser(u);
+        setIsAuthenticated(true);
       }
     } catch (e) {
       console.error("Auto login error", e);
@@ -91,6 +112,10 @@ export default function App() {
   };
 
   const isDark = theme === 'dark';
+
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} theme={theme} />;
+  }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
@@ -110,6 +135,8 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'pos' && <PosView currentUser={currentUser} theme={theme} />}
         {activeTab === 'products' && <ProductsView currentUser={currentUser} theme={theme} />}
+        {activeTab === 'alterations' && <AlterationsView theme={theme} />}
+        {activeTab === 'customers' && <CustomersView theme={theme} />}
         {activeTab === 'returns' && <ReturnsView currentUser={currentUser} theme={theme} />}
         {activeTab === 'reports' && <ReportsView theme={theme} />}
         {activeTab === 'printers' && <PrintersView theme={theme} />}
@@ -121,6 +148,7 @@ export default function App() {
         onClose={() => setIsRoleModalOpen(false)}
         currentUser={currentUser}
         onSelectUser={(u) => loginAsUser(u.username)}
+        onLogout={handleLogout}
         theme={theme}
       />
     </div>

@@ -151,9 +151,9 @@ export default function ProductsView({ currentUser, theme }) {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
       {/* Header */}
-      <div className={`p-5 rounded-2xl border flex justify-between items-center ${
+      <div className={`p-5 rounded-2xl border flex justify-between items-center card-interactive ${
         isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         <div>
@@ -164,7 +164,7 @@ export default function ProductsView({ currentUser, theme }) {
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="py-2.5 px-4 rounded-xl bg-[#C9A24B] hover:bg-[#b89139] text-black font-bold text-sm flex items-center space-x-2 shadow-xs"
+          className="py-2.5 px-4 rounded-xl bg-[#C9A24B] hover:bg-[#b89139] text-black font-bold text-sm flex items-center space-x-2 shadow-xs btn-interactive cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Menswear / Footwear Style</span>

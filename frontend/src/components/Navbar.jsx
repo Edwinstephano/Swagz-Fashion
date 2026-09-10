@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Package, RefreshCw, BarChart3, Printer, Sun, Moon } from 'lucide-react';
+import { ShoppingBag, Package, RefreshCw, BarChart3, Printer, Sun, Moon, Scissors, Users } from 'lucide-react';
+import swagLogo from '../assets/swag.png';
+import swagzzLogo from '../assets/swagzz.png';
+import swagzzWhiteLogo from '../assets/swagzz_white.png';
 
 export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRoleModal, theme, toggleTheme }) {
   const [printAgentConnected, setPrintAgentConnected] = useState(false);
@@ -21,6 +24,8 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
   const navItems = [
     { id: 'pos', label: 'POS Billing', icon: ShoppingBag, roles: ['admin', 'manager', 'cashier'] },
     { id: 'products', label: 'Products', icon: Package, roles: ['admin', 'manager'] },
+    { id: 'alterations', label: 'Alterations', icon: Scissors, roles: ['admin', 'manager', 'cashier'] },
+    { id: 'customers', label: 'VIP Clients', icon: Users, roles: ['admin', 'manager', 'cashier'] },
     { id: 'returns', label: 'Returns', icon: RefreshCw, roles: ['admin', 'manager', 'cashier'] },
     { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'manager'] },
     { id: 'printers', label: 'Settings', icon: Printer, roles: ['admin'] },
@@ -29,29 +34,23 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
   const isDark = theme === 'dark';
 
   return (
-    <header className={`px-5 py-2.5 border-b shadow-2xs sticky top-0 z-40 transition-colors ${
+    <header className={`px-5 py-2 border-b shadow-2xs sticky top-0 z-40 transition-colors ${
       isDark ? 'bg-[#181B20] border-slate-800 text-slate-100' : 'bg-white border-slate-200/90 text-slate-800'
     }`}>
       <div className="flex items-center justify-between max-w-[1550px] mx-auto">
         
         {/* Brand Logo & Store Subtext */}
-        <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => setActiveTab('pos')}>
-          <div className="w-9 h-9 rounded-xl bg-[#E5A93C] text-white flex items-center justify-center font-heading font-black text-lg shadow-xs">
-            <span>S</span>
+        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => setActiveTab('pos')}>
+          <div className="h-9 transition-transform group-hover:scale-105 flex items-center">
+            <img
+              src={isDark ? swagzzWhiteLogo : swagzzLogo}
+              alt="Swagz Fashion"
+              className="h-8 object-contain"
+            />
           </div>
-          <div>
-            <div className="flex items-center space-x-1.5 leading-none">
-              <span className={`font-black text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                SWAGZ
-              </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold uppercase bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D]">
-                POS
-              </span>
-            </div>
-            <span className={`text-[10px] font-semibold mt-0.5 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Flagship Store #04
-            </span>
-          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D]">
+            POS
+          </span>
         </div>
 
         {/* Center Navigation Tabs */}
@@ -66,7 +65,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
                 key={item.id}
                 onClick={() => isAllowed && setActiveTab(item.id)}
                 disabled={!isAllowed}
-                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all border btn-interactive cursor-pointer ${
                   isActive
                     ? 'bg-[#D49018] text-white border-[#D49018] shadow-xs'
                     : isDark

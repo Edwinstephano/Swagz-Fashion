@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText } from 'lucide-react';
+import swagLogo from '../assets/swag.png';
+import swagzzLogo from '../assets/swagzz.png';
 
 export default function PrintersView({ theme }) {
   const isDark = theme === 'dark';
@@ -145,16 +147,18 @@ export default function PrintersView({ theme }) {
       <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors ${
         isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
       }`}>
-        <div>
-          <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2.5 ${
-            isDark ? 'text-white' : 'text-slate-900'
-          }`}>
-            <Printer className="w-7 h-7 text-[#C9A24B]" />
-            <span>Thermal Printers & Shop Settings</span>
-          </h2>
-          <p className={`text-xs font-medium mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
-            Configure USB/LAN receipt printers, manage invoice branding & headers, and preview live print output.
-          </p>
+        <div className="flex items-center space-x-3.5">
+          <img src={swagLogo} alt="Swagz Logo" className="w-12 h-12 rounded-full bg-white p-0.5 border-2 border-[#C9A24B] shrink-0" />
+          <div>
+            <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2.5 ${
+              isDark ? 'text-white' : 'text-slate-900'
+            }`}>
+              <span>Thermal Printers & Shop Settings</span>
+            </h2>
+            <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+              Configure USB/LAN receipt printers, manage invoice branding & headers, and preview live print output.
+            </p>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <button

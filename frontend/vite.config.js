@@ -9,14 +9,14 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
-    port: 3000,
+    port: 3005,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8005',
         changeOrigin: true
       },
       '/static': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8005',
         changeOrigin: true
       }
     }

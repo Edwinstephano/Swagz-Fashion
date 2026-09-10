@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, AlertCircle, Printer, Banknote, QrCode, CreditCard, Wallet, RotateCcw } from 'lucide-react';
+import swagLogo from '../assets/swag.png';
+import swagzzLogo from '../assets/swagzz.png';
+import swagzzWhiteLogo from '../assets/swagzz_white.png';
 
 export default function PaymentModal({ isOpen, onClose, cartTotals, customer, onConfirmPayment }) {
   const [paymentMode, setPaymentMode] = useState('cash'); // cash, upi, card, split
@@ -53,9 +56,11 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
           <>
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[#2A2E39] pb-4 mb-5">
-              <div>
-                <span className="text-xs font-mono uppercase text-[#C9A24B] tracking-wider">POS Checkout</span>
-                <h3 className="font-heading text-xl font-bold text-white">Select Payment Mode</h3>
+              <div className="flex items-center space-x-3">
+                <img src={swagzzWhiteLogo} alt="Swagz Logo" className="h-7 object-contain" />
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D]">
+                  POS CHECKOUT
+                </span>
               </div>
               <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#2A2E39]">
                 <X className="w-5 h-5" />
@@ -201,7 +206,7 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
             }`}>
               <Printer className="w-5 h-5 shrink-0 mt-0.5" />
-              <div className="text-xs">
+              <div className="text-xs flex-1">
                 <div className="font-bold uppercase tracking-wide">
                   {printStatus?.print_status === 'success' ? '✅ Thermal Receipt Auto-Printed' : '⚠️ Thermal Print Agent Alert'}
                 </div>
@@ -209,12 +214,52 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
               </div>
             </div>
 
+            {/* Quick Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = `/alterations?bill_id=${confirmedBillData?.id || ''}`;
+                }}
+                className="py-2.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold text-xs hover:bg-amber-500/25 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <span>✂️</span>
+                <span>Book Alteration</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirmedBillData) return;
+                  try {
+                    await fetch('http://127.0.0.1:9100/print', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        invoice_number: confirmedBillData.invoice_number,
+                        total_amount: confirmedBillData.total_amount,
+                        items: confirmedBillData.items || [],
+                        cashier_name: "Cashier Counter"
+                      })
+                    });
+                    alert("Re-print command sent to thermal printer!");
+                  } catch (e) {
+                    alert("Failed to send reprint command");
+                  }
+                }}
+                className="py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-amber-500" />
+                <span>Re-Print Receipt</span>
+              </button>
+            </div>
+
             <button
               onClick={() => {
                 setPaymentCompleted(false);
                 onClose();
               }}
-              className="w-full py-3 rounded-xl bg-[#C9A24B] hover:bg-[#b89139] text-black font-bold shadow-lg"
+              className="w-full py-3 rounded-xl bg-[#C9A24B] hover:bg-[#b89139] text-black font-bold shadow-lg cursor-pointer"
             >
               Start Next Sale
             </button>

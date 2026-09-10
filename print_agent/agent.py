@@ -149,22 +149,44 @@ def print_receipt(data: PrintJobPayload):
 
     try:
         if data.connection_type == "usb" and data.device_path:
-            from escpos.printer import File
-            p = File(data.device_path)
-            p.set(align='center', bold=True, double_height=True)
-            p.text(f"{data.shop_name}\n")
-            p.set(align='center', bold=False, double_height=False)
-            p.text(f"{data.shop_address}\nGSTIN: {data.gstin}\n")
-            p.text("--------------------------------\n")
-            p.text(f"Invoice: {data.invoice_number}\n")
-            p.text("--------------------------------\n")
-            for item in data.items:
-                p.text(f"{item.name[:20]:<20} x{item.qty} {item.line_total:>8.2f}\n")
-            p.text("--------------------------------\n")
-            p.text(f"TOTAL: Rs. {data.total:.2f}\n")
-            p.text(f"{data.footer}\n\n")
-            p.cut()
-            hardware_status = "printed_to_usb_device"
+            p = None
+            dev_path = data.device_path.strip()
+
+            # Handle Windows COM Serial ports (COM1, COM2, COM3, etc.)
+            if dev_path.upper().startswith("COM"):
+                try:
+                    from escpos.printer import Serial
+                    p = Serial(dev_path)
+                except Exception:
+                    from escpos.printer import File
+                    p = File(dev_path)
+            # Handle Windows Win32Raw / Windows Shared Printer Name
+            elif "\\" in dev_path or not dev_path.startswith("/"):
+                try:
+                    from escpos.printer import Win32Raw
+                    p = Win32Raw(dev_path)
+                except Exception:
+                    from escpos.printer import File
+                    p = File(dev_path)
+            else:
+                from escpos.printer import File
+                p = File(dev_path)
+
+            if p:
+                p.set(align='center', bold=True, double_height=True)
+                p.text(f"{data.shop_name}\n")
+                p.set(align='center', bold=False, double_height=False)
+                p.text(f"{data.shop_address}\nGSTIN: {data.gstin}\n")
+                p.text("--------------------------------\n")
+                p.text(f"Invoice: {data.invoice_number}\n")
+                p.text("--------------------------------\n")
+                for item in data.items:
+                    p.text(f"{item.name[:20]:<20} x{item.qty} {item.line_total:>8.2f}\n")
+                p.text("--------------------------------\n")
+                p.text(f"TOTAL: Rs. {data.total:.2f}\n")
+                p.text(f"{data.footer}\n\n")
+                p.cut()
+                hardware_status = f"printed_to_device ({dev_path})"
         elif data.connection_type == "lan" and data.ip_address:
             from escpos.printer import Network
             p = Network(data.ip_address, port=data.port)

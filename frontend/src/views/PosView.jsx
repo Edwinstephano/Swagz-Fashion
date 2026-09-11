@@ -531,6 +531,7 @@ export default function PosView({ currentUser, theme }) {
         cartTotals={{ subtotal, tax, discountAmount, total }}
         customer={customer}
         onConfirmPayment={handleConfirmCheckout}
+        theme={theme}
       />
 
     </div>

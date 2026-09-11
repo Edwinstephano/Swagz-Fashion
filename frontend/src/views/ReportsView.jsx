@@ -397,102 +397,104 @@ export default function ReportsView({ theme }) {
             
             {/* KPI 1: Total Sales */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">1. Total Sales</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>1. Total Sales</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.gross_sales || kpis?.today_sales)}
                 </h3>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
+                <span className={`text-xs font-bold flex items-center ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                   <ArrowUpRight className="w-3.5 h-3.5" /> 12.4%
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.today_count || kpis?.total_count || 0} completed invoices</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{kpis?.today_count || kpis?.total_count || 0} completed invoices</p>
             </div>
 
             {/* KPI 2: Net Revenue */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">2. Net Revenue</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-emerald-400' : 'text-emerald-800'}`}>2. Net Revenue</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.net_sales)}
                 </h3>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Post Discounts & Returns</span>
+                <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Post Discounts & Returns</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Discounts deducted: <strong className="text-slate-800 dark:text-slate-200">{formatINR(kpis?.total_discounts)}</strong></p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Discounts deducted: <strong className={isDark ? 'text-slate-200' : 'text-slate-900'}>{formatINR(kpis?.total_discounts)}</strong></p>
             </div>
 
             {/* KPI 3: Gross Profit & Margin % */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 block">3. Gross Profit</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-sky-400' : 'text-sky-800'}`}>3. Gross Profit</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.gross_profit)}
                 </h3>
-                <span className="px-2.5 py-0.5 rounded font-sans text-xs font-bold bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                <span className={`px-2.5 py-0.5 rounded font-sans text-xs font-bold border ${
+                  isDark ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-sky-50 text-sky-800 border-sky-200'
+                }`}>
                   {kpis?.gross_margin_pct}% Margin
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">COGS Cost: <strong className="text-slate-800 dark:text-slate-200">{formatINR(kpis?.cogs)}</strong></p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>COGS Cost: <strong className={isDark ? 'text-slate-200' : 'text-slate-900'}>{formatINR(kpis?.cogs)}</strong></p>
             </div>
 
             {/* KPI 4: Total Items Sold */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 block">4. Total Items Sold</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-purple-400' : 'text-purple-800'}`}>4. Total Items Sold</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {kpis?.items_sold || 0} pcs
                 </h3>
-                <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">{kpis?.avg_items_per_invoice} pcs/bill</span>
+                <span className={`text-xs font-bold ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>{kpis?.avg_items_per_invoice} pcs/bill</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Garments & footwear units</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Garments & footwear units</p>
             </div>
 
             {/* KPI 5: Total Discounts */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">5. Total Discounts</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>5. Total Discounts</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.total_discounts)}
                 </h3>
-                <span className="text-xs text-amber-700 dark:text-amber-300 font-bold">{kpis?.discount_pct}% of sales</span>
+                <span className={`text-xs font-bold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{kpis?.discount_pct}% of sales</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Promo & cashier override</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Promo & cashier override</p>
             </div>
 
             {/* KPI 6: Total Returns */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-red-700 dark:text-red-400 block">6. Total Returns</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-red-400' : 'text-red-800'}`}>6. Total Returns</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.total_returns)}
                 </h3>
-                <span className="text-xs text-red-700 dark:text-red-300 font-bold">{kpis?.return_rate_pct}% return rate</span>
+                <span className={`text-xs font-bold ${isDark ? 'text-red-300' : 'text-red-700'}`}>{kpis?.return_rate_pct}% return rate</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.returned_items} items returned</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{kpis?.returned_items} items returned</p>
             </div>
 
             {/* KPI 7: Average Order Value (AOV) */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 block">7. Average Order Value</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>7. Average Order Value</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.aov)}
                 </h3>
-                <span className="text-xs text-slate-600 dark:text-slate-300 font-bold">Per Invoice</span>
+                <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Per Invoice</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Basket size optimizer</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Basket size optimizer</p>
             </div>
 
             {/* KPI 8: Customers */}
             <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <span className="text-xs font-sans font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 block">8. Customers</span>
+              <span className={`text-xs font-sans font-bold uppercase tracking-wider block ${isDark ? 'text-indigo-400' : 'text-indigo-800'}`}>8. Customers</span>
               <div className="flex justify-between items-baseline">
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {kpis?.total_customers || 0}
                 </h3>
-                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-bold">{kpis?.new_customers} New</span>
+                <span className={`text-xs font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>{kpis?.new_customers} New</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.returning_customers} returning buyers</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{kpis?.returning_customers} returning buyers</p>
             </div>
 
           </div>
@@ -505,24 +507,24 @@ export default function ReportsView({ theme }) {
                   <TrendingUp className="w-5 h-5 text-amber-500" />
                   <span>Sales Trend (Gross Sales vs Net Sales)</span>
                 </h3>
-                <p className="text-xs text-gray-400 font-medium">Daily transaction volume and revenue generation</p>
+                <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Daily transaction volume and revenue generation</p>
               </div>
 
               <div className="flex items-center space-x-4 text-xs font-mono font-bold">
                 <div className="flex items-center space-x-1.5">
                   <span className="w-3 h-3 rounded bg-amber-500"></span>
-                  <span>Gross Sales</span>
+                  <span className={isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}>Gross Sales</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-3 h-3 rounded bg-emerald-400"></span>
-                  <span>Net Profit</span>
+                  <span className={isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}>Net Profit</span>
                 </div>
               </div>
             </div>
 
             {/* Simple Clean Column Chart */}
             <div className="pt-4 pb-2">
-              <div className="h-56 flex items-end justify-between space-x-2 border-b pb-3 border-gray-800">
+              <div className="h-56 flex items-end justify-between space-x-2 border-b pb-3 border-slate-200 dark:border-gray-800">
                 {safeDailyTrend.map((d, i) => {
                   const heightPct = maxDailyRev > 0 ? (d.revenue / maxDailyRev) * 100 : 0;
                   return (
@@ -573,9 +575,9 @@ export default function ReportsView({ theme }) {
                         isDark ? 'bg-[#101217] border-[#222631]' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
-                      <span className="text-xs font-bold text-gray-400 block">{p.mode}</span>
-                      <span className="text-lg font-black font-mono text-amber-500 block">{formatINR(p.amount)}</span>
-                      <span className="text-[11px] font-mono text-gray-400 block">{percent}% volume</span>
+                      <span className={`text-xs font-bold block ${isDark ? 'text-gray-400' : 'text-slate-700'}`}>{p.mode}</span>
+                      <span className={`text-lg font-black font-mono block ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(p.amount)}</span>
+                      <span className={`text-[11px] font-mono block ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{percent}% volume</span>
                     </div>
                   );
                 })}
@@ -589,22 +591,33 @@ export default function ReportsView({ theme }) {
                 <span>Payment Reconciliation Summary</span>
               </h3>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 font-mono">
-                  <span className="font-bold text-slate-300">Cash Collected:</span>
-                  <span className="font-bold text-emerald-400">{formatINR(paymentModes.find(p=>p.mode==='CASH')?.amount || 0)}</span>
+              <div className="space-y-2.5 text-xs font-mono">
+                <div className={`flex justify-between p-3 rounded-xl border ${
+                  isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50/90 border-emerald-200'
+                }`}>
+                  <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-emerald-950'}`}>Cash Collected:</span>
+                  <span className={`font-extrabold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(paymentModes.find(p=>p.mode==='CASH')?.amount || 0)}</span>
                 </div>
-                <div className="flex justify-between p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/20 font-mono">
-                  <span className="font-bold text-slate-300">UPI / QR Collected:</span>
-                  <span className="font-bold text-sky-400">{formatINR(paymentModes.find(p=>p.mode==='UPI')?.amount || 0)}</span>
+
+                <div className={`flex justify-between p-3 rounded-xl border ${
+                  isDark ? 'bg-sky-500/10 border-sky-500/20' : 'bg-sky-50/90 border-sky-200'
+                }`}>
+                  <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-sky-950'}`}>UPI / QR Collected:</span>
+                  <span className={`font-extrabold ${isDark ? 'text-sky-400' : 'text-sky-700'}`}>{formatINR(paymentModes.find(p=>p.mode==='UPI')?.amount || 0)}</span>
                 </div>
-                <div className="flex justify-between p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 font-mono">
-                  <span className="font-bold text-slate-300">Card Collected:</span>
-                  <span className="font-bold text-amber-400">{formatINR(paymentModes.find(p=>p.mode==='CARD')?.amount || 0)}</span>
+
+                <div className={`flex justify-between p-3 rounded-xl border ${
+                  isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50/90 border-amber-200'
+                }`}>
+                  <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-amber-950'}`}>Card Collected:</span>
+                  <span className={`font-extrabold ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>{formatINR(paymentModes.find(p=>p.mode==='CARD')?.amount || 0)}</span>
                 </div>
-                <div className="flex justify-between p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 font-mono">
-                  <span className="font-bold text-slate-300">Total Collected Volume:</span>
-                  <span className="font-bold text-purple-400">{formatINR(totalPayVol)}</span>
+
+                <div className={`flex justify-between p-3 rounded-xl border ${
+                  isDark ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-50/90 border-purple-200'
+                }`}>
+                  <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-purple-950'}`}>Total Collected Volume:</span>
+                  <span className={`font-extrabold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatINR(totalPayVol)}</span>
                 </div>
               </div>
             </div>
@@ -627,13 +640,13 @@ export default function ReportsView({ theme }) {
                 <Clock className="w-5 h-5 text-amber-500" />
                 <span>Sales by Hour (Staff Shift Planning)</span>
               </h3>
-              <p className="text-xs text-gray-400">Peak customer checkout rush times</p>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Peak customer checkout rush times</p>
 
-              <div className="h-44 flex items-end justify-between space-x-1 border-b pb-2 border-gray-800 pt-2">
+              <div className="h-44 flex items-end justify-between space-x-1 border-b pb-2 border-slate-200 dark:border-gray-800 pt-2">
                 {hourlyTrend.map((h) => (
                   <div key={h.hour_num} className="flex-1 flex flex-col items-center group relative">
                     <div className="w-full bg-amber-500 hover:bg-amber-400 rounded-t transition-all" style={{ height: `${Math.max((h.revenue / 1000) * 10, 4)}%` }}></div>
-                    {h.hour_num % 3 === 0 && <span className="text-[9px] font-mono mt-1 text-gray-500">{h.hour_num}h</span>}
+                    {h.hour_num % 3 === 0 && <span className={`text-[9px] font-mono mt-1 ${isDark ? 'text-gray-500' : 'text-slate-600'}`}>{h.hour_num}h</span>}
                   </div>
                 ))}
               </div>
@@ -647,16 +660,20 @@ export default function ReportsView({ theme }) {
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-xl border bg-amber-500/10 border-amber-500/20 text-center space-y-1">
-                  <span className="text-xs font-bold text-gray-400 block">Total Discounts</span>
-                  <span className="text-lg font-black font-mono text-amber-400">{formatINR(kpis?.total_discounts)}</span>
-                  <span className="text-[10px] text-gray-400 font-mono block">{kpis?.discount_pct}% rate</span>
+                <div className={`p-3.5 rounded-xl border text-center space-y-1 ${
+                  isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <span className={`text-xs font-bold block ${isDark ? 'text-amber-400' : 'text-amber-950'}`}>Total Discounts</span>
+                  <span className={`text-lg font-black font-mono block ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{formatINR(kpis?.total_discounts)}</span>
+                  <span className={`text-[10px] font-mono block ${isDark ? 'text-gray-400' : 'text-amber-900/80'}`}>{kpis?.discount_pct}% rate</span>
                 </div>
 
-                <div className="p-3.5 rounded-xl border bg-red-500/10 border-red-500/20 text-center space-y-1">
-                  <span className="text-xs font-bold text-gray-400 block">Total Returns</span>
-                  <span className="text-lg font-black font-mono text-red-400">{formatINR(kpis?.total_returns)}</span>
-                  <span className="text-[10px] text-gray-400 font-mono block">{kpis?.return_rate_pct}% return rate</span>
+                <div className={`p-3.5 rounded-xl border text-center space-y-1 ${
+                  isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'
+                }`}>
+                  <span className={`text-xs font-bold block ${isDark ? 'text-red-400' : 'text-red-950'}`}>Total Returns</span>
+                  <span className={`text-lg font-black font-mono block ${isDark ? 'text-red-400' : 'text-red-700'}`}>{formatINR(kpis?.total_returns)}</span>
+                  <span className={`text-[10px] font-mono block ${isDark ? 'text-gray-400' : 'text-red-900/80'}`}>{kpis?.return_rate_pct}% return rate</span>
                 </div>
               </div>
             </div>
@@ -734,14 +751,16 @@ export default function ReportsView({ theme }) {
                       className={`hover:bg-amber-500/10 cursor-pointer transition-all ${isDark ? 'text-slate-200' : 'text-slate-900'}`}
                     >
                       <td className="p-3 font-bold">{p.product_name}</td>
-                      <td className="p-3 text-gray-400">{p.sku_barcode}</td>
+                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{p.sku_barcode}</td>
                       <td className="p-3">{p.category}</td>
                       <td className="p-3 text-right font-bold">{p.qty_sold}</td>
-                      <td className="p-3 text-right text-amber-500 font-bold">{formatINR(p.revenue)}</td>
-                      <td className="p-3 text-right text-gray-400">{formatINR(p.cost)}</td>
-                      <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(p.profit)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(p.revenue)}</td>
+                      <td className={`p-3 text-right ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{formatINR(p.cost)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(p.profit)}</td>
                       <td className="p-3 text-right">
-                        <span className="px-2 py-0.5 rounded font-bold bg-emerald-500/15 text-emerald-400">
+                        <span className={`px-2 py-0.5 rounded font-bold ${
+                          isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
                           {p.margin_pct}%
                         </span>
                       </td>
@@ -761,29 +780,29 @@ export default function ReportsView({ theme }) {
           
           {/* SECTION 15: INVENTORY KPI OVERVIEW */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Total Products</span>
-              <h4 className="text-xl font-black font-mono text-amber-500">{kpis?.active_products || 0}</h4>
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Total Products</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{kpis?.active_products || 0}</h4>
             </div>
 
-            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Total Stock Units</span>
-              <h4 className="text-xl font-black font-mono text-sky-400">{kpis?.total_stock_units || 0} pcs</h4>
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Total Stock Units</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-sky-400' : 'text-sky-700'}`}>{kpis?.total_stock_units || 0} pcs</h4>
             </div>
 
-            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Low Stock Items</span>
-              <h4 className="text-xl font-black font-mono text-amber-400">{kpis?.low_stock_count || 0}</h4>
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Low Stock Items</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{kpis?.low_stock_count || 0}</h4>
             </div>
 
-            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Out of Stock</span>
-              <h4 className="text-xl font-black font-mono text-red-500">{kpis?.out_of_stock_count || 0}</h4>
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Out of Stock</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-red-400' : 'text-red-600'}`}>{kpis?.out_of_stock_count || 0}</h4>
             </div>
 
-            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Inventory Value</span>
-              <h4 className="text-xl font-black font-mono text-emerald-400">{formatINR((kpis?.total_stock_units || 0) * 800)}</h4>
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Inventory Value</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR((kpis?.total_stock_units || 0) * 800)}</h4>
             </div>
           </div>
 
@@ -807,17 +826,19 @@ export default function ReportsView({ theme }) {
                     <th className="p-3 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
                   {lowStock.map((item, idx) => (
                     <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
                       <td className="p-3 font-bold">{item.product_name}</td>
-                      <td className="p-3 text-gray-400">{item.sku_barcode}</td>
+                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{item.sku_barcode}</td>
                       <td className="p-3">{item.brand}</td>
                       <td className="p-3">{item.size}</td>
-                      <td className="p-3 text-right font-bold text-red-400">{item.stock_qty}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{item.stock_qty}</td>
                       <td className="p-3 text-right">{item.reorder_level}</td>
                       <td className="p-3 text-center">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                          isDark ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-red-100 text-red-800 border-red-200'
+                        }`}>
                           {item.status}
                         </span>
                       </td>
@@ -851,14 +872,14 @@ export default function ReportsView({ theme }) {
                     <th className="p-3 text-right">Total Net Spend</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
                   {customerAnalytics.map((c, idx) => (
                     <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
                       <td className="p-3 font-bold">{c.name}</td>
-                      <td className="p-3 text-gray-400">{c.phone}</td>
+                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{c.phone}</td>
                       <td className="p-3 text-right font-bold">{c.orders}</td>
                       <td className="p-3 text-right">{c.items}</td>
-                      <td className="p-3 text-right font-bold text-amber-500">{formatINR(c.net_spend)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(c.net_spend)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -892,7 +913,7 @@ export default function ReportsView({ theme }) {
                     <th className="p-3 text-right">Profit Contribution</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
                   {cashierPerformance.map((c, idx) => (
                     <tr
                       key={idx}
@@ -900,12 +921,12 @@ export default function ReportsView({ theme }) {
                       className="hover:bg-amber-500/10 cursor-pointer transition-all"
                     >
                       <td className="p-3 font-bold">{c.cashier}</td>
-                      <td className="p-3 text-gray-400 uppercase text-[10px]">{c.role}</td>
+                      <td className={`p-3 uppercase text-[10px] ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{c.role}</td>
                       <td className="p-3 text-right font-bold">{c.bills}</td>
-                      <td className="p-3 text-right font-bold text-amber-500">{formatINR(c.revenue)}</td>
-                      <td className="p-3 text-right text-gray-400">{formatINR(c.discounts)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(c.revenue)}</td>
+                      <td className={`p-3 text-right ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{formatINR(c.discounts)}</td>
                       <td className="p-3 text-right">{formatINR(c.avg_invoice)}</td>
-                      <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(c.profit)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(c.profit)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -934,18 +955,22 @@ export default function ReportsView({ theme }) {
                     <th className="p-3 text-right">Discrepancy</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
                   {tillReconciliation.map((s, idx) => (
                     <tr key={idx}>
                       <td className="p-3 font-bold">Shift #{s.shift_id}</td>
                       <td className="p-3">{s.cashier}</td>
-                      <td className="p-3 text-gray-400">{s.opened_at}</td>
+                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{s.opened_at}</td>
                       <td className="p-3 text-right">{formatINR(s.opening_cash)}</td>
                       <td className="p-3 text-right">{formatINR(s.cash_sales)}</td>
                       <td className="p-3 text-right font-bold">{formatINR(s.expected_cash)}</td>
-                      <td className="p-3 text-right font-bold text-emerald-400">{formatINR(s.actual_cash)}</td>
+                      <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(s.actual_cash)}</td>
                       <td className="p-3 text-right font-bold">
-                        <span className={`px-2 py-0.5 rounded ${s.difference < 0 ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                        <span className={`px-2 py-0.5 rounded ${
+                          s.difference < 0
+                            ? isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-800'
+                            : isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
                           {formatINR(s.difference)}
                         </span>
                       </td>
@@ -980,7 +1005,7 @@ export default function ReportsView({ theme }) {
                     <th className="p-3 text-right">Gross Margin %</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/40">
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
                   {salesCategory.map((cat, idx) => {
                     const cogs = cat.revenue * 0.62;
                     const profit = cat.revenue - cogs;
@@ -988,10 +1013,10 @@ export default function ReportsView({ theme }) {
                       <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
                         <td className="p-3 font-bold">{cat.category}</td>
                         <td className="p-3 text-right">{cat.qty} pcs</td>
-                        <td className="p-3 text-right text-amber-500 font-bold">{formatINR(cat.revenue)}</td>
-                        <td className="p-3 text-right text-gray-400">{formatINR(cogs)}</td>
-                        <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(profit)}</td>
-                        <td className="p-3 text-right font-bold text-sky-400">38.0%</td>
+                        <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(cat.revenue)}</td>
+                        <td className={`p-3 text-right ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{formatINR(cogs)}</td>
+                        <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(profit)}</td>
+                        <td className={`p-3 text-right font-bold ${isDark ? 'text-sky-400' : 'text-sky-700'}`}>38.0%</td>
                       </tr>
                     );
                   })}

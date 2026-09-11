@@ -1,4 +1,5 @@
 import uvicorn
+import socket
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,9 +7,9 @@ from typing import List, Optional
 import time
 
 app = FastAPI(
-    title="Swagz Local Print Agent",
-    description="Thermal Printer Service listening on Port 9100",
-    version="1.0.0"
+    title="Swagz Central Print Agent Service",
+    description="Thermal Printer Service listening on Port 9101 (targeting Printers on Port 9100)",
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -40,6 +41,7 @@ class PaymentItem(BaseModel):
     ref: Optional[str] = None
 
 class PrintJobPayload(BaseModel):
+    bill_id: Optional[int] = None
     shop_name: str = "SWAGZ FASHION"
     shop_address: Optional[str] = ""
     shop_phone: Optional[str] = ""
@@ -52,6 +54,8 @@ class PrintJobPayload(BaseModel):
     subtotal: float
     discount: float = 0.0
     tax: float = 0.0
+    cgst: float = 0.0
+    sgst: float = 0.0
     total: float
     payments: List[PaymentItem]
     footer: Optional[str] = "Thank you for shopping at Swagz!"
@@ -86,8 +90,11 @@ def generate_virtual_receipt_html(data: PrintJobPayload) -> str:
         </div>
         """
 
+    cgst_val = data.cgst if data.cgst > 0 else round(data.tax / 2.0, 2)
+    sgst_val = data.sgst if data.sgst > 0 else round(data.tax / 2.0, 2)
+
     return f"""
-    <div style="width:{width_px}px; font-family:'Courier New', monospace; background:#fff; color:#000; padding:15px; border:1px dashed #aaa; border-radius:4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin:0 auto;">
+    <div style="max-width:100%; width:100%; box-sizing:border-box; font-family:'Courier New', monospace; background:#fff; color:#000; padding:10px; border:1px dashed #aaa; border-radius:4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin:0 auto;">
         <div style="text-align:center;">
             <h2 style="margin:0; font-size:18px; letter-spacing:1px;">{data.shop_name.upper()}</h2>
             <div style="font-size:11px; margin-top:3px;">{data.shop_address}</div>
@@ -115,7 +122,8 @@ def generate_virtual_receipt_html(data: PrintJobPayload) -> str:
         <div style="font-size:12px;">
             <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹{data.subtotal:.2f}</span></div>
             <div style="display:flex; justify-content:space-between; color:#d9534f;"><span>Discount:</span><span>-₹{data.discount:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>GST / Tax:</span><span>₹{data.tax:.2f}</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>CGST (2.5%):</span><span>₹{cgst_val:.2f}</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>SGST (2.5%):</span><span>₹{sgst_val:.2f}</span></div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px; margin-top:4px; border-top:1px solid #000; padding-top:4px;">
                 <span>NET TOTAL:</span><span>₹{data.total:.2f}</span>
             </div>
@@ -143,16 +151,14 @@ def print_receipt(data: PrintJobPayload):
     last_printed_receipt["payload"] = data.dict()
     last_printed_receipt["virtual_rendered_html"] = html
 
-    # Try physical ESC/POS thermal printing if python-escpos is available
     hardware_status = "simulated"
     error_msg = None
 
     try:
         if data.connection_type == "usb" and data.device_path:
-            p = None
             dev_path = data.device_path.strip()
+            p = None
 
-            # Handle Windows COM Serial ports (COM1, COM2, COM3, etc.)
             if dev_path.upper().startswith("COM"):
                 try:
                     from escpos.printer import Serial
@@ -160,7 +166,6 @@ def print_receipt(data: PrintJobPayload):
                 except Exception:
                     from escpos.printer import File
                     p = File(dev_path)
-            # Handle Windows Win32Raw / Windows Shared Printer Name
             elif "\\" in dev_path or not dev_path.startswith("/"):
                 try:
                     from escpos.printer import Win32Raw
@@ -183,16 +188,17 @@ def print_receipt(data: PrintJobPayload):
                 for item in data.items:
                     p.text(f"{item.name[:20]:<20} x{item.qty} {item.line_total:>8.2f}\n")
                 p.text("--------------------------------\n")
+                p.text(f"CGST: Rs. {data.cgst:.2f} | SGST: Rs. {data.sgst:.2f}\n")
                 p.text(f"TOTAL: Rs. {data.total:.2f}\n")
                 p.text(f"{data.footer}\n\n")
                 p.cut()
                 hardware_status = f"printed_to_device ({dev_path})"
         elif data.connection_type == "lan" and data.ip_address:
             from escpos.printer import Network
-            p = Network(data.ip_address, port=data.port)
+            p = Network(data.ip_address, port=data.port or 9100)
             p.text(f"{data.shop_name}\nInvoice: {data.invoice_number}\nTotal: Rs.{data.total}\n")
             p.cut()
-            hardware_status = "printed_to_network_device"
+            hardware_status = f"printed_to_network_device ({data.ip_address}:{data.port})"
     except Exception as e:
         error_msg = f"Physical printer connection skipped/error: {str(e)}"
         hardware_status = "virtual_fallback"
@@ -202,8 +208,23 @@ def print_receipt(data: PrintJobPayload):
         "mode": hardware_status,
         "invoice_number": data.invoice_number,
         "note": error_msg or "Receipt sent to printer and stored in virtual preview cache",
-        "virtual_preview_url": "http://127.0.0.1:9100/latest-receipt"
+        "virtual_preview_url": "http://127.0.0.1:9101/latest-receipt"
     }
+
+@app.get("/health")
+def health_check(ip: Optional[str] = None, port: int = 9100):
+    if not ip:
+        return {"agent_status": "online", "port": 9101}
+    
+    # TCP socket ping to thermal printer IP on port 9100
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(2.0)
+        s.connect((ip, port))
+        s.close()
+        return {"agent_status": "online", "printer_ip": ip, "printer_port": port, "printer_status": "online"}
+    except Exception as e:
+        return {"agent_status": "online", "printer_ip": ip, "printer_port": port, "printer_status": "offline", "error": str(e)}
 
 @app.get("/latest-receipt")
 def get_latest_receipt():
@@ -227,6 +248,8 @@ def test_print(payload: dict):
         subtotal=999.0,
         discount=0.0,
         tax=49.95,
+        cgst=24.97,
+        sgst=24.97,
         total=1048.95,
         payments=[PaymentItem(mode="TEST", amount=1048.95)],
         footer="*** HARDWARE / VIRTUAL TEST PRINT OK ***",
@@ -235,4 +258,4 @@ def test_print(payload: dict):
     return print_receipt(test_data)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=9100)
+    uvicorn.run(app, host="127.0.0.1", port=9101)

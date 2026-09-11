@@ -7,16 +7,18 @@ import ProductsView from './views/ProductsView';
 import ReturnsView from './views/ReturnsView';
 import ReportsView from './views/ReportsView';
 import PrintersView from './views/PrintersView';
-import AlterationsView from './views/AlterationsView';
-import CustomersView from './views/CustomersView';
 
 import LoginView from './views/LoginView';
+
+const rolePermissions = {
+  cashier: ['pos', 'returns'],
+  manager: ['pos', 'products', 'returns', 'reports'],
+  admin: ['pos', 'products', 'returns', 'reports', 'printers']
+};
 
 const getTabFromPath = (pathname) => {
   const path = (pathname || '').toLowerCase().replace(/\/$/, '');
   if (path.includes('/product')) return 'products';
-  if (path.includes('/alteration')) return 'alterations';
-  if (path.includes('/customer')) return 'customers';
   if (path.includes('/return')) return 'returns';
   if (path.includes('/report')) return 'reports';
   if (path.includes('/setting') || path.includes('/printer')) return 'printers';
@@ -26,8 +28,6 @@ const getTabFromPath = (pathname) => {
 const pathMap = {
   pos: '/pos',
   products: '/products',
-  alterations: '/alterations',
-  customers: '/customers',
   returns: '/returns',
   reports: '/reports',
   printers: '/settings'
@@ -53,6 +53,18 @@ export default function App() {
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
+  // Enforce role-based module protection & fallback to POS if unauthorized
+  useEffect(() => {
+    const userRole = (currentUser?.role || 'cashier').toLowerCase();
+    const allowedTabs = rolePermissions[userRole] || rolePermissions.cashier;
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab('pos');
+      if (window.location.pathname !== '/pos') {
+        window.history.pushState({}, '', '/pos');
+      }
+    }
+  }, [currentUser, activeTab]);
+
   useEffect(() => {
     const handlePopState = () => {
       setActiveTab(getTabFromPath(window.location.pathname));
@@ -62,6 +74,11 @@ export default function App() {
   }, []);
 
   const handleTabChange = (tabId) => {
+    const userRole = (currentUser?.role || 'cashier').toLowerCase();
+    const allowedTabs = rolePermissions[userRole] || rolePermissions.cashier;
+    if (!allowedTabs.includes(tabId)) {
+      return;
+    }
     setActiveTab(tabId);
     const newPath = pathMap[tabId] || '/pos';
     if (window.location.pathname !== newPath) {
@@ -74,6 +91,28 @@ export default function App() {
     localStorage.setItem('swagz_pos_theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const applyFonts = (h, b) => {
+      document.documentElement.style.setProperty('--font-heading', `'${h}', sans-serif`);
+      document.documentElement.style.setProperty('--font-body', `'${b}', sans-serif`);
+    };
+
+    const savedHeading = localStorage.getItem('swagz_heading_font') || 'Plus Jakarta Sans';
+    const savedBody = localStorage.getItem('swagz_body_font') || 'Inter';
+    applyFonts(savedHeading, savedBody);
+
+    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(data => {
+      if (data && (data.heading_font || data.body_font)) {
+        const h = data.heading_font || savedHeading;
+        const b = data.body_font || savedBody;
+        applyFonts(h, b);
+        localStorage.setItem('swagz_heading_font', h);
+        localStorage.setItem('swagz_body_font', b);
+      }
+    }).catch(e => {});
+  }, []);
+
+
   const toggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
@@ -81,6 +120,12 @@ export default function App() {
   const handleLoginSuccess = (userObj) => {
     setCurrentUser(userObj);
     setIsAuthenticated(true);
+    // On login, reset to allowed tab
+    const userRole = (userObj?.role || 'cashier').toLowerCase();
+    const allowedTabs = rolePermissions[userRole] || rolePermissions.cashier;
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab('pos');
+    }
   };
 
   const handleLogout = () => {
@@ -105,6 +150,12 @@ export default function App() {
         localStorage.setItem('swagz_user', JSON.stringify(u));
         setCurrentUser(u);
         setIsAuthenticated(true);
+
+        const userRole = (u.role || 'cashier').toLowerCase();
+        const allowedTabs = rolePermissions[userRole] || rolePermissions.cashier;
+        if (!allowedTabs.includes(activeTab)) {
+          setActiveTab('pos');
+        }
       }
     } catch (e) {
       console.error("Auto login error", e);
@@ -114,8 +165,11 @@ export default function App() {
   const isDark = theme === 'dark';
 
   if (!isAuthenticated) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} theme={theme} />;
+    return <LoginView onLoginSuccess={handleLoginSuccess} theme={theme} toggleTheme={toggleTheme} />;
   }
+
+  const userRole = (currentUser?.role || 'cashier').toLowerCase();
+  const isAllowed = (tab) => (rolePermissions[userRole] || rolePermissions.cashier).includes(tab);
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
@@ -131,15 +185,13 @@ export default function App() {
         toggleTheme={toggleTheme}
       />
 
-      {/* Main View Router */}
+      {/* Main View Router with Role Protection */}
       <main className="flex-1">
-        {activeTab === 'pos' && <PosView currentUser={currentUser} theme={theme} />}
-        {activeTab === 'products' && <ProductsView currentUser={currentUser} theme={theme} />}
-        {activeTab === 'alterations' && <AlterationsView theme={theme} />}
-        {activeTab === 'customers' && <CustomersView theme={theme} />}
-        {activeTab === 'returns' && <ReturnsView currentUser={currentUser} theme={theme} />}
-        {activeTab === 'reports' && <ReportsView theme={theme} />}
-        {activeTab === 'printers' && <PrintersView theme={theme} />}
+        {activeTab === 'pos' && isAllowed('pos') && <PosView currentUser={currentUser} theme={theme} />}
+        {activeTab === 'products' && isAllowed('products') && <ProductsView currentUser={currentUser} theme={theme} />}
+        {activeTab === 'returns' && isAllowed('returns') && <ReturnsView currentUser={currentUser} theme={theme} />}
+        {activeTab === 'reports' && isAllowed('reports') && <ReportsView theme={theme} />}
+        {activeTab === 'printers' && isAllowed('printers') && <PrintersView theme={theme} />}
       </main>
 
       {/* Role Switcher Modal */}

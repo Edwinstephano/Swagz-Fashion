@@ -9,7 +9,7 @@ from ..auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/printers", tags=["printers"])
 
-PRINT_AGENT_TEST_URL = "http://127.0.0.1:9100/test-print"
+PRINT_AGENT_TEST_URL = "http://127.0.0.1:9101/test-print"
 
 @router.get("", response_model=List[PrinterResponse])
 def list_printers(db: Session = Depends(get_db)):

@@ -127,9 +127,17 @@ export default function PosView({ currentUser, theme }) {
   const grossSubtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
   const itemDiscountTotal = cart.reduce((sum, item) => sum + (item.discount || 0), 0);
   const totalDiscount = itemDiscountTotal + (discountAmount || 0);
+  
+  const tax = cart.reduce((sum, item) => {
+    const lineSubtotal = item.unitPrice * item.qty;
+    const lineDisc = item.discount || 0;
+    const afterDisc = Math.max(0, lineSubtotal - lineDisc);
+    const taxPct = item.product?.tax_percent ?? 5.0;
+    return sum + (afterDisc * (taxPct / 100));
+  }, 0);
+
   const subtotalAfterDiscount = Math.max(0, grossSubtotal - totalDiscount);
-  const tax = subtotalAfterDiscount * 0.12;
-  const total = Math.max(0, subtotalAfterDiscount + tax);
+  const total = Math.max(0, grossSubtotal - totalDiscount + tax);
   const subtotal = grossSubtotal;
 
   const handleParkCart = async () => {
@@ -456,9 +464,9 @@ export default function PosView({ currentUser, theme }) {
             </div>
           )}
 
-          {/* GST Tax (12%) */}
+          {/* GST Tax */}
           <div className="flex justify-between items-center text-slate-600 font-semibold">
-            <span className="flex items-center gap-1">GST Tax (12%) <span className="text-[10px] text-slate-400">ℹ</span></span>
+            <span className="flex items-center gap-1">GST Tax <span className="text-[10px] text-slate-400">ℹ</span></span>
             <span className="font-mono font-bold text-slate-900">₹{tax.toFixed(2)}</span>
           </div>
 

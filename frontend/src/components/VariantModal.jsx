@@ -16,7 +16,9 @@ export default function VariantModal({ isOpen, onClose, product, onAddToCart, th
   const price = selectedVariant?.price_override || product.base_price;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all animate-fade-in">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 transition-all animate-fade-in ${
+      isDark ? 'bg-black/75' : 'bg-slate-900/35'
+    }`}>
       <div className={`border rounded-3xl w-full max-w-2xl p-6 shadow-2xl transition-all ${
         isDark
           ? 'bg-[#181B20] border-slate-800 text-white'

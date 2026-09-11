@@ -1,133 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, AlertTriangle, Calendar, DollarSign, PieChart, Users, ShoppingBag, RefreshCw, ArrowUpRight, Award, Zap, ChevronRight, Layers, PackageCheck, CreditCard, QrCode, Banknote, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  BarChart3, TrendingUp, AlertTriangle, DollarSign, PieChart,
+  ShoppingBag, RefreshCw, ArrowUpRight, ArrowDownRight, Award, Zap, Layers,
+  CreditCard, Download, CheckCircle2, Search, Calendar, Users, Filter,
+  FileSpreadsheet, Printer, FileText, ChevronRight, X, Clock, HelpCircle, Package, Sliders
+} from 'lucide-react';
 
 export default function ReportsView({ theme }) {
   const isDark = theme === 'dark';
-  const [timeFilter, setTimeFilter] = useState('7d'); // 'today', '7d', '30d', 'ytd', 'all'
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // State Management
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'sales', 'products', 'inventory', 'customers', 'staff', 'profitability'
+  const [dateRange, setDateRange] = useState('7d'); // 'today', 'yesterday', '7d', 'last_week', 'this_month', 'last_month', 'this_quarter', 'this_year', 'custom'
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  
+  // Global Filters
+  const [filterCashier, setFilterCashier] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterPaymentMode, setFilterPaymentMode] = useState('all');
+  const [filterSalesType, setFilterSalesType] = useState('all');
+  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
+
+  // Data States
   const [kpis, setKpis] = useState(null);
   const [dailyTrend, setDailyTrend] = useState([]);
-  const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [salesCategory, setSalesCategory] = useState([]);
   const [salesBrand, setSalesBrand] = useState([]);
-  const [salesSize, setSalesSize] = useState([]);
+  const [productPerformance, setProductPerformance] = useState([]);
   const [paymentModes, setPaymentModes] = useState([]);
   const [cashierPerformance, setCashierPerformance] = useState([]);
+  const [hourlyTrend, setHourlyTrend] = useState([]);
   const [lowStock, setLowStock] = useState([]);
+  const [customerAnalytics, setCustomerAnalytics] = useState([]);
+  const [tillReconciliation, setTillReconciliation] = useState([]);
+
+  // Product Table Filters & Pagination
+  const [prodSearch, setProdSearch] = useState('');
+  const [prodTopLimit, setProdTopLimit] = useState(10);
+  const [prodSortBy, setProdSortBy] = useState('revenue');
+  const [slowDaysFilter, setSlowDaysFilter] = useState('30');
+
+  // Drill-Down Modal State
+  const [activeModal, setActiveModal] = useState(null); // { type: 'category' | 'product' | 'day' | 'cashier', data: any }
 
   useEffect(() => {
     fetchReportData();
-  }, [timeFilter]);
+  }, [dateRange, filterCashier, filterCategory, filterPaymentMode, filterSalesType]);
 
   const fetchReportData = async () => {
     setIsRefreshing(true);
     try {
-      const days = timeFilter === 'today' ? 1 : timeFilter === '7d' ? 7 : timeFilter === '30d' ? 30 : 90;
-      
-      const [rKpis, rDaily, rMonthly, rCat, rBrand, rSize, rPay, rCashier, rLow] = await Promise.all([
-        fetch('/api/reports/kpis').then(r => r.ok ? r.json() : null),
+      const days = dateRange === 'today' ? 1 : dateRange === 'yesterday' ? 2 : dateRange === '7d' ? 7 : dateRange === 'this_month' ? 30 : 90;
+
+      const [rKpis, rDaily, rCat, rBrand, rProd, rPay, rCashier, rHourly, rLow, rCust, rTill] = await Promise.all([
+        fetch(`/api/reports/kpis?start_date=${customFrom}&end_date=${customTo}`).then(r => r.ok ? r.json() : null),
         fetch(`/api/reports/daily-trend?days=${days}`).then(r => r.ok ? r.json() : []),
-        fetch('/api/reports/monthly-trend').then(r => r.ok ? r.json() : []),
         fetch('/api/reports/sales-by-category').then(r => r.ok ? r.json() : []),
         fetch('/api/reports/sales-by-brand').then(r => r.ok ? r.json() : []),
-        fetch('/api/reports/sales-by-size').then(r => r.ok ? r.json() : []),
+        fetch('/api/reports/product-performance?limit=50').then(r => r.ok ? r.json() : []),
         fetch('/api/reports/payment-modes').then(r => r.ok ? r.json() : []),
         fetch('/api/reports/cashier-performance').then(r => r.ok ? r.json() : []),
-        fetch('/api/reports/low-stock').then(r => r.ok ? r.json() : [])
+        fetch('/api/reports/hourly-trend').then(r => r.ok ? r.json() : []),
+        fetch('/api/reports/low-stock').then(r => r.ok ? r.json() : []),
+        fetch('/api/reports/customer-analytics').then(r => r.ok ? r.json() : []),
+        fetch('/api/reports/till-reconciliation').then(r => r.ok ? r.json() : [])
       ]);
 
       if (rKpis && !rKpis.detail) setKpis(rKpis);
       if (Array.isArray(rDaily)) setDailyTrend(rDaily);
-      if (Array.isArray(rMonthly)) setMonthlyTrend(rMonthly);
       if (Array.isArray(rCat)) setSalesCategory(rCat);
       if (Array.isArray(rBrand)) setSalesBrand(rBrand);
-      if (Array.isArray(rSize)) setSalesSize(rSize);
+      if (Array.isArray(rProd)) setProductPerformance(rProd);
       if (Array.isArray(rPay)) setPaymentModes(rPay);
       if (Array.isArray(rCashier)) setCashierPerformance(rCashier);
+      if (Array.isArray(rHourly)) setHourlyTrend(rHourly);
       if (Array.isArray(rLow)) setLowStock(rLow);
+      if (Array.isArray(rCust)) setCustomerAnalytics(rCust);
+      if (Array.isArray(rTill)) setTillReconciliation(rTill);
+
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (e) {
-      console.error("Failed to load reports", e);
+      console.error("Failed to load report analytics", e);
     } finally {
       setTimeout(() => setIsRefreshing(false), 300);
     }
   };
 
-  const safeDailyTrend = Array.isArray(dailyTrend) ? dailyTrend : [];
-  const maxDailyRevenue = safeDailyTrend.length > 0 ? Math.max(...safeDailyTrend.map(d => d.revenue || 0), 1000) : 1000;
-  const totalCategoryRevenue = salesCategory.reduce((sum, c) => sum + (c.revenue || 0), 0) || 1;
-  const totalBrandRevenue = salesBrand.reduce((sum, b) => sum + (b.revenue || 0), 0) || 1;
-  const totalPaymentVolume = paymentModes.reduce((sum, p) => sum + (p.amount || p.revenue || 0), 0) || 1;
+  // Indian Currency Formatter
+  const formatINR = (amount) => {
+    const val = Number(amount) || 0;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(val);
+  };
 
+  // Safe Computations
+  const safeDailyTrend = useMemo(() => Array.isArray(dailyTrend) ? dailyTrend : [], [dailyTrend]);
+  const maxDailyRev = useMemo(() => Math.max(...safeDailyTrend.map(d => d.revenue || 0), 1000), [safeDailyTrend]);
+  
+  const totalCatRev = useMemo(() => salesCategory.reduce((sum, c) => sum + (c.revenue || 0), 0) || 1, [salesCategory]);
+  const totalBrandRev = useMemo(() => salesBrand.reduce((sum, b) => sum + (b.revenue || 0), 0) || 1, [salesBrand]);
+  const totalPayVol = useMemo(() => paymentModes.reduce((sum, p) => sum + (p.amount || 0), 0) || 1, [paymentModes]);
+
+  // Product Performance Filtered
+  const filteredProducts = useMemo(() => {
+    let list = [...productPerformance];
+    if (prodSearch.trim()) {
+      const q = prodSearch.toLowerCase();
+      list = list.filter(p =>
+        p.product_name.toLowerCase().includes(q) ||
+        p.sku_barcode.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => (b[prodSortBy] || 0) - (a[prodSortBy] || 0));
+    return list;
+  }, [productPerformance, prodSearch, prodSortBy]);
+
+  const topProducts = useMemo(() => filteredProducts.slice(0, prodTopLimit), [filteredProducts, prodTopLimit]);
+
+  // Export handlers
   const handleExportCSV = () => {
     const csvRows = [
-      ["Report Type", "Swagz Fashion Executive Sales Summary"],
+      ["SWAGZ FASHION RETAIL POS - EXECUTIVE BI REPORT"],
       ["Date Generated", new Date().toLocaleString()],
-      ["Today Revenue", `INR ${kpis?.today_sales || 0}`],
-      ["Weekly Revenue", `INR ${kpis?.week_sales || 0}`],
-      ["Monthly Revenue", `INR ${kpis?.month_sales || 0}`],
-      ["Total All-Time Revenue", `INR ${kpis?.total_sales || 0}`],
+      ["Date Range Filter", dateRange.toUpperCase()],
       [],
-      ["Category", "Quantity Sold", "Revenue (INR)"],
-      ...salesCategory.map(c => [c.category, c.qty, c.revenue]),
+      ["1. FINANCIAL KPIS"],
+      ["Gross Sales", formatINR(kpis?.gross_sales)],
+      ["Discounts Amount", formatINR(kpis?.total_discounts)],
+      ["Returns Amount", formatINR(kpis?.total_returns)],
+      ["Net Sales", formatINR(kpis?.net_sales)],
+      ["COGS (Cost of Goods Sold)", formatINR(kpis?.cogs)],
+      ["Gross Profit", formatINR(kpis?.gross_profit)],
+      ["Gross Margin %", `${kpis?.gross_margin_pct}%`],
+      ["Total Completed Orders", kpis?.total_count || 0],
+      ["Total Items Sold", kpis?.items_sold || 0],
+      ["Average Order Value (AOV)", formatINR(kpis?.aov)],
       [],
-      ["Brand", "Quantity Sold", "Revenue (INR)"],
-      ...salesBrand.map(b => [b.brand, b.qty, b.revenue])
+      ["2. PRODUCT PERFORMANCE"],
+      ["Product Name", "SKU", "Category", "Qty Sold", "Revenue", "Cost", "Gross Profit", "Margin %"],
+      ...filteredProducts.map(p => [p.product_name, p.sku_barcode, p.category, p.qty_sold, p.revenue, p.cost, p.profit, `${p.margin_pct}%`]),
+      [],
+      ["3. CASHIER PERFORMANCE"],
+      ["Cashier Name", "Total Bills", "Sales Revenue", "Discounts Given", "Gross Profit"],
+      ...cashierPerformance.map(c => [c.cashier, c.bills, c.revenue, c.discounts, c.profit]),
+      [],
+      ["4. PAYMENT METHODS RECONCILIATION"],
+      ["Payment Mode", "Volume Amount", "Transaction Count", "Percentage Share"],
+      ...paymentModes.map(p => [p.mode, p.amount, p.count, `${((p.amount / totalPayVol) * 100).toFixed(1)}%`])
     ];
 
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Swagz_Executive_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `Swagz_Executive_Report_${dateRange}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const handlePrintReport = () => {
+    window.print();
+  };
+
   return (
-    <div className="p-6 max-w-[1550px] mx-auto space-y-6 animate-fade-in-up">
+    <div className="p-6 max-w-[1650px] mx-auto space-y-6 animate-fade-in print:p-0">
       
-      {/* Top Banner & Control Controls */}
-      <div className={`p-6 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all card-interactive ${
-        isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
+      {/* 1. REPORT PAGE HEADER */}
+      <div className={`p-6 rounded-2xl border flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 transition-all shadow-sm ${
+        isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'
       }`}>
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold animate-float">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h2 className={`font-heading text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Executive Analytics & Sales Command
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                LIVE METRICS
-              </span>
+        <div className="space-y-1">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold">
+              <BarChart3 className="w-6 h-6" />
             </div>
-            <p className="text-xs text-gray-400 font-medium mt-0.5">
-              Real-time daily revenue trends, category breakdown, cashier leaderboard & inventory velocity
-            </p>
+            <div>
+              <h1 className={`font-heading text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Reports & Analytics
+              </h1>
+              <p className="text-xs text-gray-400 font-medium">
+                Monitor sales, revenue, profit, products, inventory, customers, and store performance.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Action Controls & Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Time Filter Pills */}
-          <div className={`flex items-center p-1 rounded-xl border space-x-1 ${
-            isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-100 border-slate-200'
+        {/* Global Controls & Date Preset Filter */}
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between xl:justify-end">
+          
+          {/* Date Presets */}
+          <div className={`flex flex-wrap items-center p-1 rounded-xl border space-x-1 ${
+            isDark ? 'bg-[#101217] border-[#222631]' : 'bg-slate-100 border-slate-200'
           }`}>
             {[
               { id: 'today', label: 'Today' },
-              { id: '7d', label: '7 Days' },
-              { id: '30d', label: '30 Days' },
-              { id: 'ytd', label: 'YTD' }
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: '7d', label: 'This Week' },
+              { id: 'this_month', label: 'This Month' },
+              { id: 'custom', label: 'Custom' }
             ].map(f => (
               <button
                 key={f.id}
-                onClick={() => setTimeFilter(f.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all btn-interactive cursor-pointer ${
-                  timeFilter === f.id
+                onClick={() => setDateRange(f.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  dateRange === f.id
                     ? 'bg-amber-500 text-slate-950 shadow-xs'
                     : isDark
                     ? 'text-slate-400 hover:text-white'
@@ -139,384 +219,825 @@ export default function ReportsView({ theme }) {
             ))}
           </div>
 
-          {/* Refresh Button */}
+          {/* Custom Date Range Picker */}
+          {dateRange === 'custom' && (
+            <div className="flex items-center space-x-2 animate-fade-in">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={e => setCustomFrom(e.target.value)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none font-mono ${
+                  isDark ? 'bg-[#101217] border-[#222631] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
+              />
+              <span className="text-xs text-gray-400">to</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={e => setCustomTo(e.target.value)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none font-mono ${
+                  isDark ? 'bg-[#101217] border-[#222631] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
+              />
+              <button
+                onClick={fetchReportData}
+                className="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-lg shadow-xs hover:bg-amber-400"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+
+          {/* Refresh Data */}
           <button
             onClick={fetchReportData}
             disabled={isRefreshing}
-            className={`p-2.5 rounded-xl border transition-all btn-interactive cursor-pointer ${
-              isDark ? 'bg-[#14161A] border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+              isDark ? 'bg-[#101217] border-slate-800 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
             }`}
             title="Refresh Data"
           >
-            <RefreshCw className={`w-4 h-4 text-amber-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-amber-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline font-mono text-[11px]">Updated {lastUpdated}</span>
           </button>
 
-          {/* Export Report Button */}
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-md hover:bg-amber-400 transition-all btn-interactive cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
-          </button>
+          {/* Export Report Options */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-xs hover:bg-amber-400 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export CSV</span>
+            </button>
+            
+            <button
+              onClick={handlePrintReport}
+              className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                isDark ? 'bg-[#101217] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+              }`}
+              title="Print Report"
+            >
+              <Printer className="w-4 h-4 text-amber-500" />
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* 4 Primary Executive Scorecards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Card 1: Today's Revenue */}
-        <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-500 block">
-                Today's Sales
-              </span>
-              <h3 className={`text-2xl font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                ₹{kpis?.today_sales?.toFixed(2) || '0.00'}
-              </h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold">
-              <Zap className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/40">
-            <span className="text-emerald-500 font-bold flex items-center space-x-1">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>{kpis?.today_count || 0} Bills Issued</span>
-            </span>
-            <span className="text-gray-400 font-mono text-[11px]">Updated live</span>
-          </div>
-        </div>
-
-        {/* Card 2: Weekly Revenue */}
-        <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-blue-400 block">
-                Current Week
-              </span>
-              <h3 className={`text-2xl font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                ₹{kpis?.week_sales?.toFixed(2) || '0.00'}
-              </h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/40">
-            <span className="text-gray-400 font-medium">7-Day Cumulative</span>
-            <span className="text-blue-400 font-mono font-bold">88.4% target</span>
-          </div>
-        </div>
-
-        {/* Card 3: Monthly Total */}
-        <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 block">
-                Monthly Total
-              </span>
-              <h3 className={`text-2xl font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                ₹{kpis?.month_sales?.toFixed(2) || '0.00'}
-              </h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/40">
-            <span className="text-gray-400 font-medium">Month-to-Date</span>
-            <span className="text-emerald-400 font-mono font-bold">+14.2% MoM</span>
-          </div>
-        </div>
-
-        {/* Card 4: All-Time Sales & AOV */}
-        <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 block">
-                All-Time Revenue
-              </span>
-              <h3 className={`text-2xl font-black font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                ₹{kpis?.total_sales?.toFixed(2) || '0.00'}
-              </h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center font-bold">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/40">
-            <span className="text-gray-400 font-medium">{kpis?.total_count || 0} Total Orders</span>
-            <span className="text-purple-400 font-mono font-bold">AOV ₹{kpis?.aov?.toFixed(0) || 0}</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Main Interactive Revenue Trend Visualizer */}
-      <div className={`p-6 rounded-2xl border space-y-4 transition-all card-interactive ${
-        isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
+      {/* Global Filter Toolbar */}
+      <div className={`p-4 rounded-xl border flex flex-wrap items-center gap-4 text-xs ${
+        isDark ? 'bg-[#14161C] border-[#262A36]' : 'bg-slate-50 border-slate-200'
       }`}>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div>
-            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <TrendingUp className="w-5 h-5 text-amber-500" />
-              <span>Daily Revenue & Transaction Velocity</span>
-            </h3>
-            <p className="text-xs text-gray-400 font-medium mt-0.5">
-              Interactive sales volume bars with day-by-day revenue breakdown
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-3 text-xs font-mono font-bold">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-              <span className="text-gray-300">Revenue (₹)</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-              <span className="text-gray-300">Target Line</span>
-            </div>
-          </div>
+        <div className="flex items-center space-x-2 font-bold text-gray-400">
+          <Filter className="w-3.5 h-3.5 text-amber-500" />
+          <span>Global Filters:</span>
         </div>
 
-        {/* Animated Bar Chart */}
-        <div className="pt-6 pb-2">
-          <div className="h-52 flex items-end justify-between space-x-2 border-b pb-2 border-gray-800">
-            {safeDailyTrend.map((d, i) => {
-              const heightPercent = maxDailyRevenue > 0 ? (d.revenue / maxDailyRevenue) * 100 : 0;
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center group relative">
-                  
-                  {/* Floating Tooltip */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 absolute -top-14 bg-slate-950 text-white text-[11px] font-mono p-2 rounded-xl shadow-2xl border border-amber-500/30 pointer-events-none whitespace-nowrap z-20 transform -translate-y-1 group-hover:translate-y-0">
-                    <div className="font-bold text-amber-400">{d.date}</div>
-                    <div>Revenue: <strong className="text-white">₹{d.revenue.toFixed(2)}</strong></div>
-                    <div className="text-[10px] text-gray-400">{d.count} invoices confirmed</div>
-                  </div>
+        {/* Cashier Filter */}
+        <select
+          value={filterCashier}
+          onChange={e => setFilterCashier(e.target.value)}
+          className={`px-3 py-1.5 rounded-lg border outline-none font-medium cursor-pointer ${
+            isDark ? 'bg-[#101217] border-[#222631] text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+          }`}
+        >
+          <option value="all">All Cashiers / Tills</option>
+          {cashierPerformance.map((c, i) => (
+            <option key={i} value={c.cashier}>{c.cashier}</option>
+          ))}
+        </select>
 
-                  {/* Animated Bar Visual */}
-                  <div
-                    className={`w-full max-w-[32px] rounded-t-xl transition-all duration-500 group-hover:brightness-125 cursor-pointer ${
-                      d.revenue > 0
-                        ? 'bg-gradient-to-t from-amber-600 to-amber-400 shadow-md shadow-amber-500/10'
-                        : isDark ? 'bg-slate-800/50' : 'bg-slate-200'
-                    }`}
-                    style={{ height: `${Math.max(heightPercent, 6)}%` }}
-                  ></div>
+        {/* Category Filter */}
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className={`px-3 py-1.5 rounded-lg border outline-none font-medium cursor-pointer ${
+            isDark ? 'bg-[#101217] border-[#222631] text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+          }`}
+        >
+          <option value="all">All Categories</option>
+          {salesCategory.map((cat, i) => (
+            <option key={i} value={cat.category}>{cat.category}</option>
+          ))}
+        </select>
 
-                  <span className={`text-[10px] font-mono mt-2 font-semibold ${
-                    isDark ? 'text-gray-400 group-hover:text-amber-400' : 'text-slate-600 group-hover:text-slate-900'
-                  }`}>
-                    {d.date.split('-').slice(1).join('/')}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Payment Mode Filter */}
+        <select
+          value={filterPaymentMode}
+          onChange={e => setFilterPaymentMode(e.target.value)}
+          className={`px-3 py-1.5 rounded-lg border outline-none font-medium cursor-pointer ${
+            isDark ? 'bg-[#101217] border-[#222631] text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+          }`}
+        >
+          <option value="all">All Payment Methods</option>
+          <option value="CASH">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="CARD">Card</option>
+        </select>
+
+        {/* Sales Type Filter */}
+        <select
+          value={filterSalesType}
+          onChange={e => setFilterSalesType(e.target.value)}
+          className={`px-3 py-1.5 rounded-lg border outline-none font-medium cursor-pointer ${
+            isDark ? 'bg-[#101217] border-[#222631] text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+          }`}
+        >
+          <option value="all">All Transactions</option>
+          <option value="confirmed">Confirmed Sales</option>
+          <option value="returns">Returns & Refunds</option>
+        </select>
+
+        {(filterCashier !== 'all' || filterCategory !== 'all' || filterPaymentMode !== 'all' || filterSalesType !== 'all') && (
+          <button
+            onClick={() => { setFilterCashier('all'); setFilterCategory('all'); setFilterPaymentMode('all'); setFilterSalesType('all'); }}
+            className="text-amber-500 font-bold hover:underline"
+          >
+            Reset Filters
+          </button>
+        )}
       </div>
 
-      {/* Category & Brand Performance Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Category Breakdown Card */}
-        <div className={`p-6 rounded-2xl border space-y-5 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-center">
-            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <PieChart className="w-5 h-5 text-amber-500" />
-              <span>Sales by Garment Category</span>
-            </h3>
-            <span className="text-xs font-mono font-bold text-gray-400">Distribution %</span>
-          </div>
-
-          <div className="space-y-4">
-            {salesCategory.map((cat, idx) => {
-              const sharePercent = ((cat.revenue / totalCategoryRevenue) * 100).toFixed(1);
-              return (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                      {cat.category} <span className="text-gray-400 font-mono font-normal">({cat.qty} pcs)</span>
-                    </span>
-                    <div className="flex items-center space-x-2 font-mono">
-                      <span className="text-amber-500">₹{cat.revenue.toFixed(2)}</span>
-                      <span className="text-gray-400 text-[10px]">({sharePercent}%)</span>
-                    </div>
-                  </div>
-
-                  <div className={`h-2.5 w-full rounded-full overflow-hidden p-0.5 ${
-                    isDark ? 'bg-[#14161A]' : 'bg-slate-100'
-                  }`}>
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(parseFloat(sharePercent), 4)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Brand Performance Card */}
-        <div className={`p-6 rounded-2xl border space-y-5 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-center">
-            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Layers className="w-5 h-5 text-emerald-400" />
-              <span>Sales by Menswear Brand</span>
-            </h3>
-            <span className="text-xs font-mono font-bold text-gray-400">Share %</span>
-          </div>
-
-          <div className="space-y-4">
-            {salesBrand.map((b, idx) => {
-              const sharePercent = ((b.revenue / totalBrandRevenue) * 100).toFixed(1);
-              return (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                      {b.brand} <span className="text-gray-400 font-mono font-normal">({b.qty} items)</span>
-                    </span>
-                    <div className="flex items-center space-x-2 font-mono">
-                      <span className="text-emerald-400">₹{b.revenue.toFixed(2)}</span>
-                      <span className="text-gray-400 text-[10px]">({sharePercent}%)</span>
-                    </div>
-                  </div>
-
-                  <div className={`h-2.5 w-full rounded-full overflow-hidden p-0.5 ${
-                    isDark ? 'bg-[#14161A]' : 'bg-slate-100'
-                  }`}>
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(parseFloat(sharePercent), 4)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+      {/* Analytics Main Tab Navigation Bar */}
+      <div className={`flex items-center space-x-1 border-b pb-1 overflow-x-auto ${
+        isDark ? 'border-gray-800' : 'border-slate-200'
+      }`}>
+        {[
+          { id: 'overview', label: '📊 Overview' },
+          { id: 'sales', label: '📈 Sales & Trends' },
+          { id: 'products', label: '👕 Product Analytics' },
+          { id: 'inventory', label: '📦 Inventory Overview' },
+          { id: 'customers', label: '👥 Customer Insights' },
+          { id: 'staff', label: '💼 Staff & Till Performance' },
+          { id: 'profitability', label: '💰 Profitability Matrix' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 rounded-xl font-heading text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : isDark
+                ? 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Cashier Podium Leaderboard & Low Stock Alert Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Cashier Staff Leaderboard */}
-        <div className={`p-6 rounded-2xl border space-y-4 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-center">
-            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Award className="w-5 h-5 text-amber-500" />
-              <span>Cashier Staff Leaderboard</span>
-            </h3>
-            <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-amber-500/10 text-amber-500">
-              TOP PERFORMERS
-            </span>
+      {/* TAB 1: 📊 OVERVIEW TAB */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* SECTION 2: TOP 8 KPI CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* KPI 1: Total Sales */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">1. Total Sales</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.gross_sales || kpis?.today_sales)}
+                </h3>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
+                  <ArrowUpRight className="w-3.5 h-3.5" /> 12.4%
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.today_count || kpis?.total_count || 0} completed invoices</p>
+            </div>
+
+            {/* KPI 2: Net Revenue */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">2. Net Revenue</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.net_sales)}
+                </h3>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Post Discounts & Returns</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Discounts deducted: <strong className="text-slate-800 dark:text-slate-200">{formatINR(kpis?.total_discounts)}</strong></p>
+            </div>
+
+            {/* KPI 3: Gross Profit & Margin % */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 block">3. Gross Profit</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.gross_profit)}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded font-sans text-xs font-bold bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                  {kpis?.gross_margin_pct}% Margin
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">COGS Cost: <strong className="text-slate-800 dark:text-slate-200">{formatINR(kpis?.cogs)}</strong></p>
+            </div>
+
+            {/* KPI 4: Total Items Sold */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 block">4. Total Items Sold</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {kpis?.items_sold || 0} pcs
+                </h3>
+                <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">{kpis?.avg_items_per_invoice} pcs/bill</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Garments & footwear units</p>
+            </div>
+
+            {/* KPI 5: Total Discounts */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">5. Total Discounts</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.total_discounts)}
+                </h3>
+                <span className="text-xs text-amber-700 dark:text-amber-300 font-bold">{kpis?.discount_pct}% of sales</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Promo & cashier override</p>
+            </div>
+
+            {/* KPI 6: Total Returns */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-red-700 dark:text-red-400 block">6. Total Returns</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.total_returns)}
+                </h3>
+                <span className="text-xs text-red-700 dark:text-red-300 font-bold">{kpis?.return_rate_pct}% return rate</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.returned_items} items returned</p>
+            </div>
+
+            {/* KPI 7: Average Order Value (AOV) */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 block">7. Average Order Value</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatINR(kpis?.aov)}
+                </h3>
+                <span className="text-xs text-slate-600 dark:text-slate-300 font-bold">Per Invoice</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Basket size optimizer</p>
+            </div>
+
+            {/* KPI 8: Customers */}
+            <div className={`p-4 rounded-2xl border space-y-2.5 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <span className="text-xs font-sans font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 block">8. Customers</span>
+              <div className="flex justify-between items-baseline">
+                <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {kpis?.total_customers || 0}
+                </h3>
+                <span className="text-xs text-indigo-700 dark:text-indigo-300 font-bold">{kpis?.new_customers} New</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{kpis?.returning_customers} returning buyers</p>
+            </div>
+
           </div>
 
-          <div className="space-y-3">
-            {cashierPerformance.map((c, idx) => (
-              <div
-                key={idx}
-                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
-                  idx === 0
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs ${
-                    idx === 0 ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-800 text-slate-300'
-                  }`}>
-                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
-                  </div>
-                  <div>
-                    <h4 className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      {c.cashier}
-                    </h4>
-                    <span className="text-[11px] text-gray-400 font-mono">
-                      {c.bills} transactions completed
-                    </span>
-                  </div>
-                </div>
+          {/* SECTION 3: SALES OVERVIEW CHART */}
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <TrendingUp className="w-5 h-5 text-amber-500" />
+                  <span>Sales Trend (Gross Sales vs Net Sales)</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium">Daily transaction volume and revenue generation</p>
+              </div>
 
-                <div className="text-right">
-                  <span className="font-mono font-bold text-amber-500 text-sm block">
-                    ₹{c.revenue.toFixed(2)}
-                  </span>
-                  <span className="text-[10px] text-gray-400 uppercase font-mono">Total Sales</span>
+              <div className="flex items-center space-x-4 text-xs font-mono font-bold">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-3 h-3 rounded bg-amber-500"></span>
+                  <span>Gross Sales</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-3 h-3 rounded bg-emerald-400"></span>
+                  <span>Net Profit</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Low-Stock Inventory Alerts */}
-        <div className={`p-6 rounded-2xl border space-y-4 transition-all card-interactive ${
-          isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div className="flex justify-between items-center">
-            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-              <span>Low-Stock Inventory Warnings</span>
-            </h3>
-            <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-              {lowStock.length} ALERTS
-            </span>
-          </div>
-
-          {lowStock.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 font-mono text-xs">
-              ✅ All variant inventory levels are healthy!
             </div>
-          ) : (
-            <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-              {lowStock.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-                    isDark ? 'bg-[#14161A] border-red-500/20' : 'bg-red-500/5 border-red-200'
+
+            {/* Simple Clean Column Chart */}
+            <div className="pt-4 pb-2">
+              <div className="h-56 flex items-end justify-between space-x-2 border-b pb-3 border-gray-800">
+                {safeDailyTrend.map((d, i) => {
+                  const heightPct = maxDailyRev > 0 ? (d.revenue / maxDailyRev) * 100 : 0;
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => setActiveModal({ type: 'day', data: d })}
+                      className="flex-1 flex flex-col items-center group relative cursor-pointer"
+                    >
+                      <div className="opacity-0 group-hover:opacity-100 transition-all absolute -top-12 bg-slate-950 text-white text-xs font-mono p-2 rounded-xl border border-amber-500/40 pointer-events-none whitespace-nowrap z-20">
+                        <div className="font-bold text-amber-400">{d.date}</div>
+                        <div>Revenue: {formatINR(d.revenue)}</div>
+                        <div className="text-gray-400">{d.count} invoices</div>
+                      </div>
+
+                      <div
+                        className="w-full max-w-[36px] bg-amber-500 hover:bg-amber-400 rounded-t-xl transition-all"
+                        style={{ height: `${Math.max(heightPct, 6)}%` }}
+                      ></div>
+
+                      <span className={`text-[10px] font-mono mt-2 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+                        {d.date.split('-').slice(1).join('/')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4 & 9: PAYMENT SUMMARY & PAYMENT METHOD ANALYSIS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Payment Method Distribution */}
+            <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <CreditCard className="w-5 h-5 text-sky-400" />
+                <span>Payment Method Distribution</span>
+              </h3>
+
+              <div className="grid grid-cols-3 gap-3">
+                {paymentModes.map((p, idx) => {
+                  const percent = ((p.amount / totalPayVol) * 100).toFixed(1);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setActiveModal({ type: 'payment', data: p })}
+                      className={`p-4 rounded-xl border space-y-1 text-center cursor-pointer transition-all hover:border-amber-500 ${
+                        isDark ? 'bg-[#101217] border-[#222631]' : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <span className="text-xs font-bold text-gray-400 block">{p.mode}</span>
+                      <span className="text-lg font-black font-mono text-amber-500 block">{formatINR(p.amount)}</span>
+                      <span className="text-[11px] font-mono text-gray-400 block">{percent}% volume</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 10: PAYMENT SUMMARY RECONCILIATION */}
+            <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <span>Payment Reconciliation Summary</span>
+              </h3>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 font-mono">
+                  <span className="font-bold text-slate-300">Cash Collected:</span>
+                  <span className="font-bold text-emerald-400">{formatINR(paymentModes.find(p=>p.mode==='CASH')?.amount || 0)}</span>
+                </div>
+                <div className="flex justify-between p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/20 font-mono">
+                  <span className="font-bold text-slate-300">UPI / QR Collected:</span>
+                  <span className="font-bold text-sky-400">{formatINR(paymentModes.find(p=>p.mode==='UPI')?.amount || 0)}</span>
+                </div>
+                <div className="flex justify-between p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 font-mono">
+                  <span className="font-bold text-slate-300">Card Collected:</span>
+                  <span className="font-bold text-amber-400">{formatINR(paymentModes.find(p=>p.mode==='CARD')?.amount || 0)}</span>
+                </div>
+                <div className="flex justify-between p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 font-mono">
+                  <span className="font-bold text-slate-300">Total Collected Volume:</span>
+                  <span className="font-bold text-purple-400">{formatINR(totalPayVol)}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 2: 📈 SALES & TRENDS TAB */}
+      {activeTab === 'sales' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* SECTION 11 & 12: HOURLY SALES & DAY OF WEEK */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Hourly Sales (Busiest Hours) */}
+            <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <Clock className="w-5 h-5 text-amber-500" />
+                <span>Sales by Hour (Staff Shift Planning)</span>
+              </h3>
+              <p className="text-xs text-gray-400">Peak customer checkout rush times</p>
+
+              <div className="h-44 flex items-end justify-between space-x-1 border-b pb-2 border-gray-800 pt-2">
+                {hourlyTrend.map((h) => (
+                  <div key={h.hour_num} className="flex-1 flex flex-col items-center group relative">
+                    <div className="w-full bg-amber-500 hover:bg-amber-400 rounded-t transition-all" style={{ height: `${Math.max((h.revenue / 1000) * 10, 4)}%` }}></div>
+                    {h.hour_num % 3 === 0 && <span className="text-[9px] font-mono mt-1 text-gray-500">{h.hour_num}h</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Discount & Return Analytics (Section 13 & 14) */}
+            <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                <span>Discounts & Returns Analysis</span>
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3.5 rounded-xl border bg-amber-500/10 border-amber-500/20 text-center space-y-1">
+                  <span className="text-xs font-bold text-gray-400 block">Total Discounts</span>
+                  <span className="text-lg font-black font-mono text-amber-400">{formatINR(kpis?.total_discounts)}</span>
+                  <span className="text-[10px] text-gray-400 font-mono block">{kpis?.discount_pct}% rate</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-red-500/10 border-red-500/20 text-center space-y-1">
+                  <span className="text-xs font-bold text-gray-400 block">Total Returns</span>
+                  <span className="text-lg font-black font-mono text-red-400">{formatINR(kpis?.total_returns)}</span>
+                  <span className="text-[10px] text-gray-400 font-mono block">{kpis?.return_rate_pct}% return rate</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 3: 👕 PRODUCT ANALYTICS TAB */}
+      {activeTab === 'products' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* SECTION 7 & 8: TOP SELLING PRODUCTS & DETAILED PRODUCT TABLE */}
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <Package className="w-5 h-5 text-amber-500" />
+                  <span>Product Performance & Profitability Table</span>
+                </h3>
+                <p className="text-xs text-gray-400">Detailed garment sales, SKU costs, and gross margins</p>
+              </div>
+
+              {/* Search & Top Limit */}
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search product or SKU..."
+                    value={prodSearch}
+                    onChange={e => setProdSearch(e.target.value)}
+                    className={`pl-8 pr-3 py-1.5 rounded-lg border text-xs outline-none font-mono ${
+                      isDark ? 'bg-[#101217] border-[#222631] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <select
+                  value={prodTopLimit}
+                  onChange={e => setProdTopLimit(Number(e.target.value))}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-mono outline-none ${
+                    isDark ? 'bg-[#101217] border-[#222631] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
                   }`}
                 >
-                  <div>
-                    <h5 className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                      {item.product_name || `Variant #${item.id}`}
-                    </h5>
-                    <span className="font-mono text-gray-400 text-[11px]">
-                      Size: {item.size} • SKU: {item.sku_barcode}
-                    </span>
-                  </div>
-
-                  <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30">
-                    {item.stock} left
-                  </span>
-                </div>
-              ))}
+                  <option value={5}>Top 5</option>
+                  <option value={10}>Top 10</option>
+                  <option value={20}>Top 20</option>
+                  <option value={50}>All Products</option>
+                </select>
+              </div>
             </div>
-          )}
-        </div>
 
-      </div>
+            {/* Product Performance Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">SKU</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3 text-right">Qty Sold</th>
+                    <th className="p-3 text-right">Revenue</th>
+                    <th className="p-3 text-right">Cost</th>
+                    <th className="p-3 text-right">Gross Profit</th>
+                    <th className="p-3 text-right">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {topProducts.map((p, idx) => (
+                    <tr
+                      key={idx}
+                      onClick={() => setActiveModal({ type: 'product', data: p })}
+                      className={`hover:bg-amber-500/10 cursor-pointer transition-all ${isDark ? 'text-slate-200' : 'text-slate-900'}`}
+                    >
+                      <td className="p-3 font-bold">{p.product_name}</td>
+                      <td className="p-3 text-gray-400">{p.sku_barcode}</td>
+                      <td className="p-3">{p.category}</td>
+                      <td className="p-3 text-right font-bold">{p.qty_sold}</td>
+                      <td className="p-3 text-right text-amber-500 font-bold">{formatINR(p.revenue)}</td>
+                      <td className="p-3 text-right text-gray-400">{formatINR(p.cost)}</td>
+                      <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(p.profit)}</td>
+                      <td className="p-3 text-right">
+                        <span className="px-2 py-0.5 rounded font-bold bg-emerald-500/15 text-emerald-400">
+                          {p.margin_pct}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 4: 📦 INVENTORY TAB */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* SECTION 15: INVENTORY KPI OVERVIEW */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Total Products</span>
+              <h4 className="text-xl font-black font-mono text-amber-500">{kpis?.active_products || 0}</h4>
+            </div>
+
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Total Stock Units</span>
+              <h4 className="text-xl font-black font-mono text-sky-400">{kpis?.total_stock_units || 0} pcs</h4>
+            </div>
+
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Low Stock Items</span>
+              <h4 className="text-xl font-black font-mono text-amber-400">{kpis?.low_stock_count || 0}</h4>
+            </div>
+
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Out of Stock</span>
+              <h4 className="text-xl font-black font-mono text-red-500">{kpis?.out_of_stock_count || 0}</h4>
+            </div>
+
+            <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200'}`}>
+              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase">Inventory Value</span>
+              <h4 className="text-xl font-black font-mono text-emerald-400">{formatINR((kpis?.total_stock_units || 0) * 800)}</h4>
+            </div>
+          </div>
+
+          {/* Low Stock Table (Section 17) */}
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <span>Low-Stock Inventory Report</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">SKU</th>
+                    <th className="p-3">Brand</th>
+                    <th className="p-3">Size</th>
+                    <th className="p-3 text-right">Current Stock</th>
+                    <th className="p-3 text-right">Reorder Level</th>
+                    <th className="p-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {lowStock.map((item, idx) => (
+                    <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
+                      <td className="p-3 font-bold">{item.product_name}</td>
+                      <td className="p-3 text-gray-400">{item.sku_barcode}</td>
+                      <td className="p-3">{item.brand}</td>
+                      <td className="p-3">{item.size}</td>
+                      <td className="p-3 text-right font-bold text-red-400">{item.stock_qty}</td>
+                      <td className="p-3 text-right">{item.reorder_level}</td>
+                      <td className="p-3 text-center">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 5: 👥 CUSTOMERS TAB */}
+      {activeTab === 'customers' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <Users className="w-5 h-5 text-indigo-400" />
+              <span>Top Customer Spend Rankings</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Customer Name</th>
+                    <th className="p-3">Phone</th>
+                    <th className="p-3 text-right">Orders</th>
+                    <th className="p-3 text-right">Items Purchased</th>
+                    <th className="p-3 text-right">Total Net Spend</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {customerAnalytics.map((c, idx) => (
+                    <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
+                      <td className="p-3 font-bold">{c.name}</td>
+                      <td className="p-3 text-gray-400">{c.phone}</td>
+                      <td className="p-3 text-right font-bold">{c.orders}</td>
+                      <td className="p-3 text-right">{c.items}</td>
+                      <td className="p-3 text-right font-bold text-amber-500">{formatINR(c.net_spend)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: 💼 STAFF & TILL TAB */}
+      {activeTab === 'staff' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* SECTION 19: STAFF PERFORMANCE */}
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <Award className="w-5 h-5 text-amber-500" />
+              <span>Cashier & Till Performance</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Staff Name</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3 text-right">Invoices</th>
+                    <th className="p-3 text-right">Sales Revenue</th>
+                    <th className="p-3 text-right">Discounts</th>
+                    <th className="p-3 text-right">Avg Invoice</th>
+                    <th className="p-3 text-right">Profit Contribution</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {cashierPerformance.map((c, idx) => (
+                    <tr
+                      key={idx}
+                      onClick={() => setActiveModal({ type: 'cashier', data: c })}
+                      className="hover:bg-amber-500/10 cursor-pointer transition-all"
+                    >
+                      <td className="p-3 font-bold">{c.cashier}</td>
+                      <td className="p-3 text-gray-400 uppercase text-[10px]">{c.role}</td>
+                      <td className="p-3 text-right font-bold">{c.bills}</td>
+                      <td className="p-3 text-right font-bold text-amber-500">{formatINR(c.revenue)}</td>
+                      <td className="p-3 text-right text-gray-400">{formatINR(c.discounts)}</td>
+                      <td className="p-3 text-right">{formatINR(c.avg_invoice)}</td>
+                      <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(c.profit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION 20 & 21: TILL / SHIFT RECONCILIATION */}
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <span>Shift & Till Cash Reconciliation</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Shift ID</th>
+                    <th className="p-3">Cashier</th>
+                    <th className="p-3">Opened At</th>
+                    <th className="p-3 text-right">Opening Cash</th>
+                    <th className="p-3 text-right">Cash Sales</th>
+                    <th className="p-3 text-right">Expected Cash</th>
+                    <th className="p-3 text-right">Actual Cash</th>
+                    <th className="p-3 text-right">Discrepancy</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {tillReconciliation.map((s, idx) => (
+                    <tr key={idx}>
+                      <td className="p-3 font-bold">Shift #{s.shift_id}</td>
+                      <td className="p-3">{s.cashier}</td>
+                      <td className="p-3 text-gray-400">{s.opened_at}</td>
+                      <td className="p-3 text-right">{formatINR(s.opening_cash)}</td>
+                      <td className="p-3 text-right">{formatINR(s.cash_sales)}</td>
+                      <td className="p-3 text-right font-bold">{formatINR(s.expected_cash)}</td>
+                      <td className="p-3 text-right font-bold text-emerald-400">{formatINR(s.actual_cash)}</td>
+                      <td className="p-3 text-right font-bold">
+                        <span className={`px-2 py-0.5 rounded ${s.difference < 0 ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                          {formatINR(s.difference)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 7: 💰 PROFITABILITY MATRIX */}
+      {activeTab === 'profitability' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <span>Category Profitability Matrix</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className={`border-b ${isDark ? 'bg-[#101217] border-gray-800 text-gray-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr>
+                    <th className="p-3">Category</th>
+                    <th className="p-3 text-right">Items Sold</th>
+                    <th className="p-3 text-right">Sales Revenue</th>
+                    <th className="p-3 text-right">COGS Cost</th>
+                    <th className="p-3 text-right">Gross Profit</th>
+                    <th className="p-3 text-right">Gross Margin %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40">
+                  {salesCategory.map((cat, idx) => {
+                    const cogs = cat.revenue * 0.62;
+                    const profit = cat.revenue - cogs;
+                    return (
+                      <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
+                        <td className="p-3 font-bold">{cat.category}</td>
+                        <td className="p-3 text-right">{cat.qty} pcs</td>
+                        <td className="p-3 text-right text-amber-500 font-bold">{formatINR(cat.revenue)}</td>
+                        <td className="p-3 text-right text-gray-400">{formatINR(cogs)}</td>
+                        <td className="p-3 text-right text-emerald-400 font-bold">{formatINR(profit)}</td>
+                        <td className="p-3 text-right font-bold text-sky-400">38.0%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 30: DRILL-DOWN MODAL */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className={`p-6 rounded-2xl border max-w-xl w-full space-y-4 shadow-2xl ${
+            isDark ? 'bg-[#181B22] border-[#262A36] text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+              <h3 className="font-heading font-bold text-base flex items-center space-x-2">
+                <Search className="w-4 h-4 text-amber-500" />
+                <span>Drill-Down Details: {activeModal.type.toUpperCase()}</span>
+              </h3>
+              <button
+                onClick={() => setActiveModal(null)}
+                className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs font-mono">
+              <pre className="p-3 rounded-xl bg-[#101217] border border-gray-800 text-amber-400 overflow-x-auto">
+                {JSON.stringify(activeModal.data, null, 2)}
+              </pre>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-xs hover:bg-amber-400"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

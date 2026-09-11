@@ -15,6 +15,23 @@ def get_settings(db: Session = Depends(get_db)):
         db.add(settings)
         db.commit()
         db.refresh(settings)
+    
+    # Backfill default values if columns are empty
+    updated = False
+    if not getattr(settings, 'categories', None):
+        settings.categories = "Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear"
+        updated = True
+    if not getattr(settings, 'available_sizes', None):
+        settings.available_sizes = "S, M, L, XL, XXL, 38, 40, 42, 44"
+        updated = True
+    if not getattr(settings, 'available_colors', None):
+        settings.available_colors = "White, Navy Blue, Black, Olive, Maroon, Beige"
+        updated = True
+    
+    if updated:
+        db.commit()
+        db.refresh(settings)
+        
     return settings
 
 @router.put("", response_model=ShopSettingsResponse)

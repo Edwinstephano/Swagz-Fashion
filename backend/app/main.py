@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .database import engine, Base
-from .routers import auth, products, customers, bills, returns, alterations, reports, printers, settings
+from .routers import auth, products, customers, bills, returns, alterations, reports, printers, settings, shifts, audit
 
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
@@ -32,13 +32,13 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 # Include Routers
 app.include_router(auth.router)
 app.include_router(products.router)
-app.include_router(customers.router)
 app.include_router(bills.router)
 app.include_router(returns.router)
-app.include_router(alterations.router)
 app.include_router(reports.router)
 app.include_router(printers.router)
 app.include_router(settings.router)
+app.include_router(shifts.router)
+app.include_router(audit.router)
 
 @app.get("/")
 def root():

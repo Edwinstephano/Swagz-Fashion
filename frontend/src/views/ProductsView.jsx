@@ -1,26 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, Tag, Search, Edit3, Trash2, Layers, Archive, RotateCcw, Eye } from 'lucide-react';
+import { Plus, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import AddProductModal from '../components/AddProductModal';
 
 export default function ProductsView({ currentUser, theme }) {
   const isDark = theme === 'dark';
   const [products, setProducts] = useState([]);
   const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'archived', 'all'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Form State
-  const [name, setName] = useState('');
-  const [brand, setBrand] = useState('Swagz Signature');
-  const [category, setCategory] = useState('Shirts');
-  const [description, setDescription] = useState('');
-  const [basePrice, setBasePrice] = useState(1499);
-  const [costPrice, setCostPrice] = useState(700);
-  const [taxPercent, setTaxPercent] = useState(5);
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  const [selectedSizes, setSelectedSizes] = useState(['S', 'M', 'L', 'XL']);
-  const [selectedColors, setSelectedColors] = useState(['White', 'Navy Blue']);
-  const [stockPerVariant, setStockPerVariant] = useState(15);
 
   useEffect(() => {
     fetchProducts(statusFilter);
@@ -73,83 +59,6 @@ export default function ProductsView({ currentUser, theme }) {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setUploadingImage(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/products/upload-image', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: formData
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setImageUrl(data.image_url);
-      }
-    } catch (e) {
-      alert("Image upload failed");
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleCreateProduct = async (e) => {
-    e.preventDefault();
-
-    const generatedVariants = [];
-    const skuPrefix = `SWZ-${brand.substring(0, 2).toUpperCase()}-${category.substring(0, 2).toUpperCase()}`;
-
-    selectedSizes.forEach(size => {
-      selectedColors.forEach(color => {
-        const colorCode = color.substring(0, 3).toUpperCase();
-        generatedVariants.push({
-          size,
-          color,
-          sku_barcode: `${skuPrefix}-${colorCode}-${size}`,
-          stock_qty: stockPerVariant
-        });
-      });
-    });
-
-    const payload = {
-      name,
-      brand,
-      category,
-      description,
-      base_price: parseFloat(basePrice),
-      cost_price: parseFloat(costPrice),
-      tax_percent: parseFloat(taxPercent),
-      image_url: imageUrl || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&q=80',
-      variants: generatedVariants
-    };
-
-    try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        setIsAddModalOpen(false);
-        fetchProducts(statusFilter);
-        alert("Product created successfully!");
-      }
-    } catch (e) {
-      alert("Failed to create product");
-    }
-  };
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -160,7 +69,9 @@ export default function ProductsView({ currentUser, theme }) {
           <h2 className={`font-heading text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Product Catalog & Variant Matrix
           </h2>
-          <p className="text-xs text-gray-400 font-mono mt-1">Manage menswear styles, footwear, barcodes, stock levels, archive, and upload images</p>
+          <p className="text-xs text-gray-400 font-mono mt-1">
+            Manage menswear styles, footwear, barcodes, stock levels, archive, and upload images
+          </p>
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
@@ -311,165 +222,13 @@ export default function ProductsView({ currentUser, theme }) {
         </div>
       </div>
 
-      {/* Enlarged Create Product Modal Dialog (max-w-4xl = 896px wide) */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 overflow-y-auto">
-          <div className={`border rounded-3xl w-full max-w-4xl p-8 shadow-2xl transition-all ${
-            isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200'
-          }`}>
-            <div className="flex justify-between items-center border-b pb-4 mb-6 border-slate-200">
-              <div>
-                <h3 className={`font-heading text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Add New Style & Generate Variant Matrix
-                </h3>
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">Specify garment details, pricing, tax rates, and generate size × color variant matrix</p>
-              </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-slate-900 font-bold p-2 text-lg">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProduct} className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Product Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Linen Blend Casual Shirt"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 text-sm font-medium ${
-                      isDark ? 'bg-[#14161A] border-gray-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Brand Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={brand}
-                    onChange={e => setBrand(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 text-sm font-medium ${
-                      isDark ? 'bg-[#14161A] border-gray-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 text-sm font-medium ${
-                      isDark ? 'bg-[#14161A] border-gray-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  >
-                    <option>Shirts</option>
-                    <option>Jeans</option>
-                    <option>Suits</option>
-                    <option>Ethnic</option>
-                    <option>T-Shirts</option>
-                    <option>Accessories</option>
-                    <option>Footwear</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Base Price (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    value={basePrice}
-                    onChange={e => setBasePrice(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 font-mono text-sm font-bold ${
-                      isDark ? 'bg-[#14161A] border-gray-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">GST Tax %</label>
-                  <input
-                    type="number"
-                    required
-                    value={taxPercent}
-                    onChange={e => setTaxPercent(e.target.value)}
-                    className={`w-full border rounded-xl px-4 py-3 font-mono text-sm font-bold ${
-                      isDark ? 'bg-[#14161A] border-gray-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Product Image Upload Box */}
-              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#14161A] border-gray-800' : 'bg-slate-50 border-slate-200'}`}>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Product Image Upload</label>
-                <div className="flex space-x-4 items-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#C9A24B] file:text-black hover:file:bg-[#b89139]"
-                  />
-                  {uploadingImage && <span className="text-xs text-amber-600 font-mono font-bold">Uploading image...</span>}
-                  {imageUrl && <span className="text-xs text-emerald-600 font-mono font-bold">✅ Image Uploaded Successfully</span>}
-                </div>
-              </div>
-
-              {/* Variant Matrix Generator Box */}
-              <div className={`p-5 rounded-2xl border space-y-4 ${
-                isDark ? 'bg-[#14161A] border-gray-800' : 'bg-slate-50 border-slate-300'
-              }`}>
-                <h4 className="text-xs font-black text-[#C9A24B] uppercase tracking-wider">
-                  Automated Size × Color Variant Matrix Builder
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1">Sizes (Comma separated):</label>
-                    <input
-                      type="text"
-                      value={selectedSizes.join(', ')}
-                      onChange={e => setSelectedSizes(e.target.value.split(',').map(s => s.trim()))}
-                      className={`w-full border rounded-xl px-3 py-2 font-mono text-xs font-bold ${
-                        isDark ? 'bg-[#1F2229] border-gray-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1">Colors (Comma separated):</label>
-                    <input
-                      type="text"
-                      value={selectedColors.join(', ')}
-                      onChange={e => setSelectedColors(e.target.value.split(',').map(c => c.trim()))}
-                      className={`w-full border rounded-xl px-3 py-2 font-mono text-xs font-bold ${
-                        isDark ? 'bg-[#1F2229] border-gray-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-4 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="py-3 px-6 rounded-xl border border-slate-300 text-slate-700 text-sm font-bold hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="py-3 px-8 rounded-xl bg-[#C9A24B] hover:bg-[#b89139] text-black font-extrabold text-sm shadow-md"
-                >
-                  Create Product & Variant Matrix
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Standalone AddProductModal Component */}
+      <AddProductModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onProductCreated={() => fetchProducts(statusFilter)}
+        theme={theme}
+      />
     </div>
   );
 }

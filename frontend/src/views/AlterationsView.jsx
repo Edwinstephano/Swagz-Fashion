@@ -157,7 +157,7 @@ export default function AlterationsView({ theme }) {
         cashier_name: "Master Tailor"
       };
 
-      const res = await fetch('http://127.0.0.1:9100/print', {
+      const res = await fetch('http://127.0.0.1:9101/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(printPayload)
@@ -166,7 +166,7 @@ export default function AlterationsView({ theme }) {
       if (res.ok) {
         alert(`✂️ Tailoring Tag #ALT-${alt.id} sent to Thermal Printer!`);
       } else {
-        alert("Print agent offline. Ensure Print Agent on port 9100 is active.");
+        alert("Print agent offline. Ensure Print Agent on port 9101 is active.");
       }
     } catch (e) {
       alert("Error triggering thermal tag print.");

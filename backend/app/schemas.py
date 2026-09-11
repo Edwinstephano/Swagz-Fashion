@@ -165,6 +165,8 @@ class BillResponse(BaseModel):
     subtotal: float
     discount_amount: float
     tax_amount: float
+    cgst_amount: Optional[float] = 0.0
+    sgst_amount: Optional[float] = 0.0
     total_amount: float
     status: str
     notes: Optional[str] = None
@@ -172,6 +174,48 @@ class BillResponse(BaseModel):
     items: List[BillItemResponse] = []
     payments: List[PaymentResponse] = []
     customer: Optional[CustomerResponse] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Shift Schemas ---
+class ShiftOpenRequest(BaseModel):
+    opening_cash: float = 0.0
+
+class ShiftCloseRequest(BaseModel):
+    actual_cash: float
+    notes: Optional[str] = None
+
+class ShiftResponse(BaseModel):
+    id: int
+    cashier_id: int
+    opening_cash: float
+    cash_sales: float
+    card_sales: float
+    upi_sales: float
+    returns_amount: float
+    expected_cash: float
+    actual_cash: Optional[float] = None
+    discrepancy: Optional[float] = None
+    notes: Optional[str] = None
+    status: str
+    opened_at: datetime
+    closed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Audit Log Schema ---
+class AuditLogResponse(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[int] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    details: Optional[str] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -207,6 +251,7 @@ class ReturnItemCreate(BaseModel):
     variant_id: int
     qty: int
     refund_amount: float
+    condition: str = "good"
 
 class ReturnCreate(BaseModel):
     original_bill_id: int
@@ -239,6 +284,7 @@ class PrinterResponse(BaseModel):
     device_path: Optional[str] = None
     paper_width_mm: int
     is_default: bool
+    is_active: bool
     created_at: datetime
 
     class Config:
@@ -246,12 +292,14 @@ class PrinterResponse(BaseModel):
 
 class PrintJobResponse(BaseModel):
     id: int
-    bill_id: int
-    printer_id: Optional[int]
+    bill_id: Optional[int] = None
+    printer_id: Optional[int] = None
+    receipt_type: str
     status: str
-    attempts: int
-    last_error: Optional[str]
+    attempt_count: int
+    last_error: Optional[str] = None
     created_at: datetime
+    printed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -266,6 +314,11 @@ class ShopSettingsUpdate(BaseModel):
     invoice_prefix: Optional[str] = None
     tax_default: Optional[float] = None
     receipt_footer: Optional[str] = None
+    categories: Optional[str] = None
+    available_sizes: Optional[str] = None
+    available_colors: Optional[str] = None
+    heading_font: Optional[str] = None
+    body_font: Optional[str] = None
 
 class ShopSettingsResponse(BaseModel):
     id: int
@@ -277,6 +330,12 @@ class ShopSettingsResponse(BaseModel):
     invoice_prefix: str
     tax_default: float
     receipt_footer: str
+    categories: Optional[str] = "Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear"
+    available_sizes: Optional[str] = "S, M, L, XL, XXL, 38, 40, 42, 44"
+    available_colors: Optional[str] = "White, Navy Blue, Black, Olive, Maroon, Beige"
+    heading_font: Optional[str] = "Plus Jakarta Sans"
+    body_font: Optional[str] = "Inter"
 
     class Config:
         from_attributes = True
+

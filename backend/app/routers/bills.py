@@ -1,41 +1,46 @@
-import requests
+import json
+import os
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from ..database import get_db
 from ..models import (
     Bill, BillItem, Payment, ProductVariant, Product, Customer,
-    User, ShopSettings, Printer, PrintJob, PrintJobStatus, BillStatus
+    User, ShopSettings, Printer, PrintJob, PrintJobStatus, BillStatus,
+    ReceiptType, AuditLog, InvoiceSequence
 )
 from ..schemas import BillCreate, BillResponse, PaymentCreate
 from ..auth import get_current_user
 
 router = APIRouter(prefix="/api/bills", tags=["bills"])
 
-PRINT_AGENT_URL = "http://127.0.0.1:9100/print"
-
 def generate_invoice_number(db: Session) -> str:
+    """
+    Transaction-safe invoice sequencing with gapless numbering for committed invoices.
+    Uses row-level locking (with_for_update()) inside the active invoice creation transaction.
+    Cancelled or voided bills retain their assigned invoice number with status='void'
+    and are never deleted or re-used, guaranteeing complete GST compliance.
+    """
     settings = db.query(ShopSettings).first()
     prefix = settings.invoice_prefix if settings else "SWZ-2026-"
-    count = db.query(Bill).count() + 1
-    return f"{prefix}{count:05d}"
 
-def send_to_print_agent(bill: Bill, db: Session) -> dict:
+    # Use atomic Sequence table with row lock
+    seq = db.query(InvoiceSequence).filter(InvoiceSequence.prefix == prefix).with_for_update().first()
+    if not seq:
+        seq = InvoiceSequence(prefix=prefix, current_val=0)
+        db.add(seq)
+        db.flush()
+
+    seq.current_val += 1
+    return f"{prefix}{seq.current_val:05d}"
+
+def queue_print_job(bill: Bill, db: Session) -> PrintJob:
     settings = db.query(ShopSettings).first()
-    printer = db.query(Printer).filter(Printer.is_default == True).first()
+    printer = db.query(Printer).filter(Printer.is_default == True, Printer.is_active == True).first()
     if not printer:
-        printer = db.query(Printer).first()
-
-    # Build print job row
-    print_job = PrintJob(
-        bill_id=bill.id,
-        printer_id=printer.id if printer else None,
-        status=PrintJobStatus.PENDING.value
-    )
-    db.add(print_job)
-    db.commit()
-    db.refresh(print_job)
+        printer = db.query(Printer).filter(Printer.is_active == True).first()
 
     items_payload = []
     for item in bill.items:
@@ -54,6 +59,7 @@ def send_to_print_agent(bill: Bill, db: Session) -> dict:
     payments_payload = [{"mode": p.mode.upper(), "amount": p.amount, "ref": p.reference_no} for p in bill.payments]
 
     payload = {
+        "bill_id": bill.id,
         "shop_name": settings.shop_name if settings else "SWAGZ FASHION",
         "shop_address": settings.address if settings else "",
         "shop_phone": settings.phone if settings else "",
@@ -66,6 +72,8 @@ def send_to_print_agent(bill: Bill, db: Session) -> dict:
         "subtotal": bill.subtotal,
         "discount": bill.discount_amount,
         "tax": bill.tax_amount,
+        "cgst": bill.cgst_amount,
+        "sgst": bill.sgst_amount,
         "total": bill.total_amount,
         "payments": payments_payload,
         "footer": settings.receipt_footer if settings else "Thank you for shopping at Swagz!",
@@ -76,24 +84,30 @@ def send_to_print_agent(bill: Bill, db: Session) -> dict:
         "port": printer.port if printer else 9100
     }
 
+    print_job = PrintJob(
+        bill_id=bill.id,
+        printer_id=printer.id if printer else None,
+        receipt_type=ReceiptType.BILL.value,
+        status=PrintJobStatus.QUEUED.value,
+        payload_json=json.dumps(payload),
+        attempt_count=0
+    )
+
+    print_status = "queued"
+    detail = "Print job added to PostgreSQL queue"
     try:
-        res = requests.post(PRINT_AGENT_URL, json=payload, timeout=3)
-        if res.status_code == 200 and res.json().get("status") == "success":
-            print_job.status = PrintJobStatus.SUCCESS.value
-            print_job.last_error = None
-            db.commit()
-            return {"print_status": "success", "detail": "Printed automatically via Print Agent (port 9100)"}
-        else:
-            err = res.json().get("error", f"Print Agent HTTP {res.status_code}")
-            print_job.status = PrintJobStatus.FAILED.value
-            print_job.last_error = err
-            db.commit()
-            return {"print_status": "failed", "detail": err}
+        import requests
+        res = requests.post("http://127.0.0.1:9101/print", json=payload, timeout=2.5)
+        if res.status_code == 200:
+            print_status = "success"
+            detail = "Thermal receipt auto-printed successfully via Print Agent"
+            print_job.status = PrintJobStatus.PRINTED.value
+            print_job.printed_at = datetime.utcnow()
     except Exception as e:
-        print_job.status = PrintJobStatus.FAILED.value
-        print_job.last_error = str(e)
-        db.commit()
-        return {"print_status": "failed", "detail": f"Print Agent offline or unreachable: {str(e)}"}
+        detail = f"Print Agent dispatch offline, job queued in database"
+
+    db.add(print_job)
+    return print_job, {"print_status": print_status, "print_job_id": print_job.id, "detail": detail}
 
 @router.get("", response_model=List[BillResponse])
 def list_bills(
@@ -131,111 +145,155 @@ def create_bill(
     if not req.items:
         raise HTTPException(status_code=400, detail="Cart cannot be empty")
 
-    invoice_no = generate_invoice_number(db)
+    try:
+        invoice_no = generate_invoice_number(db)
 
-    # Compute calculations
-    subtotal = 0.0
-    total_tax = 0.0
+        # Compute calculations
+        subtotal = 0.0
+        total_item_disc = 0.0
+        total_tax = 0.0
 
-    bill_items_to_create = []
-    for item in req.items:
-        variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
-        if not variant:
-            raise HTTPException(status_code=404, detail=f"Variant ID {item.variant_id} not found")
-        
-        if req.status == BillStatus.CONFIRMED.value and variant.stock_qty < item.qty:
+        bill_items_to_create = []
+        for item in req.items:
+            variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
+            if not variant:
+                raise HTTPException(status_code=404, detail=f"Variant ID {item.variant_id} not found")
+
+            # Check stock
+            if req.status == BillStatus.CONFIRMED.value and variant.stock_qty < item.qty:
+                product = db.query(Product).filter(Product.id == variant.product_id).first()
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Insufficient stock for {product.name if product else 'Item'} ({variant.size}/{variant.color}). Available: {variant.stock_qty}, Requested: {item.qty}"
+                )
+
+            line_subtotal = item.unit_price * item.qty
+            line_disc = item.discount
+            after_disc = max(0.0, line_subtotal - line_disc)
+            
             product = db.query(Product).filter(Product.id == variant.product_id).first()
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Insufficient stock for {product.name if product else 'Item'} ({variant.size}/{variant.color}). Available: {variant.stock_qty}, Requested: {item.qty}"
-            )
+            tax_pct = product.tax_percent if product else 5.0
+            line_tax = round(after_disc * (tax_pct / 100.0), 2)
+            line_total = round(after_disc + line_tax, 2)
 
-        line_subtotal = item.unit_price * item.qty
-        line_disc = item.discount
-        after_disc = max(0.0, line_subtotal - line_disc)
-        
-        # Calculate GST/Tax based on product
-        product = db.query(Product).filter(Product.id == variant.product_id).first()
-        tax_pct = product.tax_percent if product else 5.0
-        line_tax = round(after_disc * (tax_pct / 100.0), 2)
-        line_total = round(after_disc + line_tax, 2)
+            subtotal += line_subtotal
+            total_item_disc += line_disc
+            total_tax += line_tax
 
-        subtotal += line_subtotal
-        total_tax += line_tax
+            bill_items_to_create.append({
+                "variant_id": variant.id,
+                "qty": item.qty,
+                "unit_price": item.unit_price,
+                "discount": line_disc,
+                "tax": line_tax,
+                "line_total": line_total,
+                "variant_obj": variant
+            })
 
-        bill_items_to_create.append({
-            "variant_id": variant.id,
-            "qty": item.qty,
-            "unit_price": item.unit_price,
-            "discount": line_disc,
-            "tax": line_tax,
-            "line_total": line_total,
-            "variant_obj": variant
-        })
+        overall_discount = round(total_item_disc + req.discount_amount, 2)
+        total_amount = round(max(0.0, subtotal - overall_discount + total_tax), 2)
+        cgst = round(total_tax / 2.0, 2)
+        sgst = round(total_tax / 2.0, 2)
 
-    total_amount = round(max(0.0, subtotal - req.discount_amount + total_tax), 2)
-
-    bill = Bill(
-        invoice_number=invoice_no,
-        customer_id=req.customer_id,
-        cashier_id=current_user.id,
-        subtotal=round(subtotal, 2),
-        discount_amount=round(req.discount_amount, 2),
-        tax_amount=round(total_tax, 2),
-        total_amount=total_amount,
-        status=req.status,
-        notes=req.notes
-    )
-    db.add(bill)
-    db.commit()
-    db.refresh(bill)
-
-    # Save Items
-    for bi in bill_items_to_create:
-        bill_item = BillItem(
-            bill_id=bill.id,
-            variant_id=bi["variant_id"],
-            qty=bi["qty"],
-            unit_price=bi["unit_price"],
-            discount=bi["discount"],
-            tax=bi["tax"],
-            line_total=bi["line_total"]
-        )
-        db.add(bill_item)
-
-        # Decrement stock if confirmed
+        # Validate payments for confirmed bill
         if req.status == BillStatus.CONFIRMED.value:
-            bi["variant_obj"].stock_qty = max(0, bi["variant_obj"].stock_qty - bi["qty"])
+            total_paid = sum(p.amount for p in req.payments)
+            if total_paid < total_amount - 0.01:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient payment. Total payable: ₹{total_amount:.2f}, Total paid: ₹{total_paid:.2f}"
+                )
 
-    # Save Payments
-    for p in req.payments:
-        pm = Payment(
-            bill_id=bill.id,
-            mode=p.mode.lower(),
-            amount=p.amount,
-            reference_no=p.reference_no
+        bill = Bill(
+            invoice_number=invoice_no,
+            customer_id=req.customer_id,
+            cashier_id=current_user.id,
+            subtotal=round(subtotal, 2),
+            discount_amount=overall_discount,
+            tax_amount=round(total_tax, 2),
+            cgst_amount=cgst,
+            sgst_amount=sgst,
+            total_amount=total_amount,
+            status=req.status,
+            notes=req.notes
         )
-        db.add(pm)
+        db.add(bill)
+        db.flush()
 
-    # Award Loyalty Points (1 point for every ₹100 spent)
-    if req.status == BillStatus.CONFIRMED.value and req.customer_id:
-        cust = db.query(Customer).filter(Customer.id == req.customer_id).first()
-        if cust:
-            earned_points = int(total_amount // 100)
-            cust.loyalty_points += earned_points
+        # Save Items & Atomic Stock Deduction
+        for bi in bill_items_to_create:
+            bill_item = BillItem(
+                bill_id=bill.id,
+                variant_id=bi["variant_id"],
+                qty=bi["qty"],
+                unit_price=bi["unit_price"],
+                discount=bi["discount"],
+                tax=bi["tax"],
+                line_total=bi["line_total"]
+            )
+            db.add(bill_item)
 
-    db.commit()
-    db.refresh(bill)
+            # Atomic stock deduction in database
+            if req.status == BillStatus.CONFIRMED.value:
+                variant_id = bi["variant_id"]
+                qty_deduct = bi["qty"]
+                
+                res = db.execute(
+                    text("UPDATE product_variants SET stock_qty = stock_qty - :qty WHERE id = :id AND stock_qty >= :qty"),
+                    {"id": variant_id, "qty": qty_deduct}
+                )
+                if res.rowcount == 0:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Stock condition race failure for variant ID {variant_id}. Insufficient stock."
+                    )
 
-    # Auto-Print trigger if confirmed
-    print_result = {"print_status": "skipped", "detail": "Bill saved as draft/parked"}
-    if req.status == BillStatus.CONFIRMED.value:
-        print_result = send_to_print_agent(bill, db)
+        # Save Payments
+        for p in req.payments:
+            pm = Payment(
+                bill_id=bill.id,
+                mode=p.mode.lower(),
+                amount=p.amount,
+                reference_no=p.reference_no
+            )
+            db.add(pm)
 
-    return {
-        "bill": BillResponse.from_orm(bill),
-        "print_info": print_result
-    }
+        # Award Loyalty Points (1 point per ₹100)
+        if req.status == BillStatus.CONFIRMED.value and req.customer_id:
+            cust = db.query(Customer).filter(Customer.id == req.customer_id).first()
+            if cust:
+                earned_points = int(total_amount // 100)
+                cust.loyalty_points += earned_points
+
+        # Queue Thermal Print Job
+        print_info = {"print_status": "none", "print_job_id": None, "detail": "Parked bill - no print job"}
+        if req.status == BillStatus.CONFIRMED.value:
+            p_job, print_info = queue_print_job(bill, db)
+            db.flush()
+
+        # Audit Log Entry
+        audit = AuditLog(
+            user_id=current_user.id,
+            action="BILL_CREATED",
+            entity_type="Bill",
+            entity_id=bill.id,
+            details=f"Created Invoice {invoice_no} Total ₹{total_amount:.2f} Status: {req.status}"
+        )
+        db.add(audit)
+
+        db.commit()
+        db.refresh(bill)
+
+        return {
+            "bill": BillResponse.from_orm(bill),
+            "print_info": print_info
+        }
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Billing transaction failed: {str(e)}")
 
 @router.post("/{bill_id}/confirm", response_model=dict)
 def confirm_parked_bill(
@@ -247,43 +305,82 @@ def confirm_parked_bill(
     bill = db.query(Bill).filter(Bill.id == bill_id).first()
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
-    
+
     if bill.status == BillStatus.CONFIRMED.value:
         raise HTTPException(status_code=400, detail="Bill is already confirmed")
 
-    # Stock validation
-    for item in bill.items:
-        variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
-        if variant and variant.stock_qty < item.qty:
-            raise HTTPException(status_code=400, detail=f"Insufficient stock for variant ID {variant.id}")
-        if variant:
-            variant.stock_qty = max(0, variant.stock_qty - item.qty)
-
-    # Save Payments
-    bill.payments.clear()
-    for p in payments:
-        pm = Payment(
-            bill_id=bill.id,
-            mode=p.mode.lower(),
-            amount=p.amount,
-            reference_no=p.reference_no
+    # Payment validation
+    total_paid = sum(p.amount for p in payments)
+    if total_paid < bill.total_amount - 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient payment. Total payable: ₹{bill.total_amount:.2f}, Total paid: ₹{total_paid:.2f}"
         )
-        db.add(pm)
 
-    bill.status = BillStatus.CONFIRMED.value
-    db.commit()
-    db.refresh(bill)
+    try:
+        # Atomic Stock Deduction
+        for item in bill.items:
+            res = db.execute(
+                text("UPDATE product_variants SET stock_qty = stock_qty - :qty WHERE id = :id AND stock_qty >= :qty"),
+                {"id": item.variant_id, "qty": item.qty}
+            )
+            if res.rowcount == 0:
+                db.rollback()
+                raise HTTPException(status_code=400, detail=f"Insufficient stock to confirm bill item ID {item.id}")
 
-    print_result = send_to_print_agent(bill, db)
-    return {
-        "bill": BillResponse.from_orm(bill),
-        "print_info": print_result
-    }
+        # Save Payments
+        bill.payments.clear()
+        for p in payments:
+            pm = Payment(
+                bill_id=bill.id,
+                mode=p.mode.lower(),
+                amount=p.amount,
+                reference_no=p.reference_no
+            )
+            db.add(pm)
+
+        bill.status = BillStatus.CONFIRMED.value
+        p_job, print_info = queue_print_job(bill, db)
+        db.flush()
+
+        audit = AuditLog(
+            user_id=current_user.id,
+            action="BILL_CONFIRMED",
+            entity_type="Bill",
+            entity_id=bill.id,
+            details=f"Confirmed parked invoice {bill.invoice_number}"
+        )
+        db.add(audit)
+
+        db.commit()
+        db.refresh(bill)
+
+        return {
+            "bill": BillResponse.from_orm(bill),
+            "print_info": print_info
+        }
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Failed to confirm bill: {str(e)}")
 
 @router.post("/{bill_id}/reprint")
-def reprint_bill(bill_id: int, db: Session = Depends(get_db)):
+def reprint_bill(bill_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     bill = db.query(Bill).filter(Bill.id == bill_id).first()
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
-    print_result = send_to_print_agent(bill, db)
-    return {"message": "Reprint job initiated", "print_info": print_result}
+
+    p_job = queue_print_job(bill, db)
+
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="BILL_REPRINT_REQUESTED",
+        entity_type="Bill",
+        entity_id=bill.id,
+        details=f"Reprint requested for Invoice {bill.invoice_number}"
+    )
+    db.add(audit)
+
+    db.commit()
+    return {"message": "Reprint job queued", "print_job_id": p_job.id}

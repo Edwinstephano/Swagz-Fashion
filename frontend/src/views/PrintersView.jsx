@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText } from 'lucide-react';
+import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText, Type } from 'lucide-react';
 import swagLogo from '../assets/swag.png';
 import swagzzLogo from '../assets/swagzz.png';
 
@@ -12,8 +12,13 @@ export default function PrintersView({ theme }) {
     address: '74 Luxury Boulevard, Tailor District, New Delhi - 110001',
     phone: '+91 98765 43210',
     gstin: '07SWAGZ9999F1Z9',
-    receipt_footer: 'Thank you for shopping at Swagz! Menswear items once sold can be exchanged within 7 days with original tag & invoice.'
+    receipt_footer: 'Thank you for shopping at Swagz! Menswear items once sold can be exchanged within 7 days with original tag & invoice.',
+    categories: 'Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear',
+    available_sizes: 'S, M, L, XL, XXL, 38, 40, 42, 44',
+    heading_font: 'Plus Jakarta Sans',
+    body_font: 'Inter'
   });
+
   const [virtualReceiptHtml, setVirtualReceiptHtml] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -28,6 +33,15 @@ export default function PrintersView({ theme }) {
     is_default: false
   });
 
+  const applyFontConfig = (h, b) => {
+    const headingFont = h || 'Plus Jakarta Sans';
+    const bodyFont = b || 'Inter';
+    document.documentElement.style.setProperty('--font-heading', `'${headingFont}', sans-serif`);
+    document.documentElement.style.setProperty('--font-body', `'${bodyFont}', sans-serif`);
+    localStorage.setItem('swagz_heading_font', headingFont);
+    localStorage.setItem('swagz_body_font', bodyFont);
+  };
+
   useEffect(() => {
     fetchPrinters();
     fetchPrintJobs();
@@ -39,31 +53,37 @@ export default function PrintersView({ theme }) {
     try {
       const res = await fetch('/api/printers');
       if (res.ok) setPrinters(await res.json());
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchPrintJobs = async () => {
     try {
       const res = await fetch('/api/printers/jobs');
       if (res.ok) setPrintJobs(await res.json());
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
-      if (res.ok) setSettings(await res.json());
-    } catch (e) {}
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+        applyFontConfig(data.heading_font, data.body_font);
+      }
+    } catch (e) { }
   };
+
+
 
   const fetchLatestVirtualReceipt = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:9100/latest-receipt');
+      const res = await fetch('http://127.0.0.1:9101/latest-receipt');
       if (res.ok) {
         const data = await res.json();
         if (data.html) setVirtualReceiptHtml(data.html);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveSettings = async (e) => {
@@ -82,7 +102,8 @@ export default function PrintersView({ theme }) {
       if (res.ok) {
         const updated = await res.json();
         setSettings(updated);
-        setStatusMessage({ type: 'success', text: 'Shop branding & invoice settings saved successfully!' });
+        applyFontConfig(updated.heading_font, updated.body_font);
+        setStatusMessage({ type: 'success', text: 'Shop typography, branding & catalog settings saved successfully!' });
       } else {
         setStatusMessage({ type: 'error', text: 'Failed to update shop settings.' });
       }
@@ -95,7 +116,7 @@ export default function PrintersView({ theme }) {
   };
 
   const handleTestPrint = async (printerId) => {
-    setStatusMessage({ type: 'info', text: 'Sending test print payload to Print Agent (port 9100)...' });
+    setStatusMessage({ type: 'info', text: 'Sending test print payload to Print Agent (port 9101)...' });
     try {
       const res = await fetch(`/api/printers/${printerId}/test-print`, { method: 'POST' });
       if (res.ok) {
@@ -144,15 +165,13 @@ export default function PrintersView({ theme }) {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors ${
-        isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-      }`}>
+      <div className={`p-5 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+        }`}>
         <div className="flex items-center space-x-3.5">
           <img src={swagLogo} alt="Swagz Logo" className="w-12 h-12 rounded-full bg-white p-0.5 border-2 border-[#C9A24B] shrink-0" />
           <div>
-            <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2.5 ${
-              isDark ? 'text-white' : 'text-slate-900'
-            }`}>
+            <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2.5 ${isDark ? 'text-white' : 'text-slate-900'
+              }`}>
               <span>Thermal Printers & Shop Settings</span>
             </h2>
             <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
@@ -163,11 +182,10 @@ export default function PrintersView({ theme }) {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setShowAddPrinterModal(true)}
-            className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm ${
-              isDark 
-                ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' 
+            className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm ${isDark
+                ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]'
                 : 'bg-slate-900 text-white hover:bg-slate-800'
-            }`}
+              }`}
           >
             <Plus className="w-4 h-4" />
             <span>Add Thermal Printer</span>
@@ -177,13 +195,12 @@ export default function PrintersView({ theme }) {
 
       {/* Notification / Toast alert */}
       {statusMessage && (
-        <div className={`p-4 rounded-xl text-xs font-mono font-bold border flex items-center space-x-2 transition-all ${
-          statusMessage.type === 'success' 
+        <div className={`p-4 rounded-xl text-xs font-mono font-bold border flex items-center space-x-2 transition-all ${statusMessage.type === 'success'
             ? (isDark ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300' : 'bg-emerald-50 border-emerald-300 text-emerald-900')
             : statusMessage.type === 'error'
-            ? (isDark ? 'bg-rose-950/40 border-rose-500/50 text-rose-300' : 'bg-rose-50 border-rose-300 text-rose-900')
-            : (isDark ? 'bg-amber-950/40 border-amber-500/50 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900')
-        }`}>
+              ? (isDark ? 'bg-rose-950/40 border-rose-500/50 text-rose-300' : 'bg-rose-50 border-rose-300 text-rose-900')
+              : (isDark ? 'bg-amber-950/40 border-amber-500/50 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900')
+          }`}>
           {statusMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
           <span>{statusMessage.text}</span>
         </div>
@@ -191,22 +208,20 @@ export default function PrintersView({ theme }) {
 
       {/* Main Grid: 2 Columns on Left, 1 Column on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column: Printers & Settings Form */}
         <div className="lg:col-span-2 space-y-6">
 
           {/* Configured Printers Card */}
-          <div className={`p-5 rounded-2xl border space-y-4 ${
-            isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-          }`}>
+          <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
             <div className="flex justify-between items-center">
               <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <Printer className="w-5 h-5 text-[#C9A24B]" />
                 <span>Configured Thermal Printers</span>
               </h3>
-              <span className={`text-xs font-mono px-2.5 py-1 rounded-full font-semibold ${
-                isDark ? 'bg-slate-800 text-gray-300' : 'bg-slate-100 text-slate-700'
-              }`}>
+              <span className={`text-xs font-mono px-2.5 py-1 rounded-full font-semibold ${isDark ? 'bg-slate-800 text-gray-300' : 'bg-slate-100 text-slate-700'
+                }`}>
                 {printers.length} Installed
               </span>
             </div>
@@ -218,16 +233,14 @@ export default function PrintersView({ theme }) {
                 </div>
               ) : (
                 printers.map(p => (
-                  <div key={p.id} className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-3 transition-all ${
-                    isDark ? 'bg-[#15181E] border-[#2E3440]' : 'bg-slate-50 border-slate-200'
-                  }`}>
+                  <div key={p.id} className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-3 transition-all ${isDark ? 'bg-[#15181E] border-[#2E3440]' : 'bg-slate-50 border-slate-200'
+                    }`}>
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{p.name}</span>
                         {p.is_default && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold uppercase ${
-                            isDark ? 'bg-[#C9A24B]/20 text-[#C9A24B] border border-[#C9A24B]/30' : 'bg-slate-900 text-white'
-                          }`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold uppercase ${isDark ? 'bg-[#C9A24B]/20 text-[#C9A24B] border border-[#C9A24B]/30' : 'bg-slate-900 text-white'
+                            }`}>
                             Default
                           </span>
                         )}
@@ -239,11 +252,10 @@ export default function PrintersView({ theme }) {
 
                     <button
                       onClick={() => handleTestPrint(p.id)}
-                      className={`py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-all ${
-                        isDark 
-                          ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' 
+                      className={`py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-all ${isDark
+                          ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
-                      }`}
+                        }`}
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>⚡ Test Thermal Print</span>
@@ -255,9 +267,8 @@ export default function PrintersView({ theme }) {
           </div>
 
           {/* Shop & Invoice Branding Settings Form */}
-          <div className={`p-5 rounded-2xl border space-y-4 ${
-            isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-          }`}>
+          <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
             <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-700/60">
               <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <Store className="w-5 h-5 text-[#C9A24B]" />
@@ -275,9 +286,8 @@ export default function PrintersView({ theme }) {
                     type="text"
                     value={settings.shop_name}
                     onChange={(e) => setSettings({ ...settings, shop_name: e.target.value })}
-                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                      isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                     required
                   />
                 </div>
@@ -290,9 +300,8 @@ export default function PrintersView({ theme }) {
                     type="text"
                     value={settings.gstin}
                     onChange={(e) => setSettings({ ...settings, gstin: e.target.value })}
-                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                      isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                     required
                   />
                 </div>
@@ -307,9 +316,8 @@ export default function PrintersView({ theme }) {
                     type="text"
                     value={settings.address}
                     onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                      isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                     required
                   />
                 </div>
@@ -322,9 +330,8 @@ export default function PrintersView({ theme }) {
                     type="text"
                     value={settings.phone}
                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                      isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3.5 py-2 rounded-xl border text-xs font-semibold font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
                     required
                   />
                 </div>
@@ -338,9 +345,8 @@ export default function PrintersView({ theme }) {
                   rows={2}
                   value={settings.receipt_footer}
                   onChange={(e) => setSettings({ ...settings, receipt_footer: e.target.value })}
-                  className={`w-full px-3.5 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                    isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
+                  className={`w-full px-3.5 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
                   required
                 />
               </div>
@@ -349,11 +355,10 @@ export default function PrintersView({ theme }) {
                 <button
                   type="submit"
                   disabled={isSavingSettings}
-                  className={`py-2.5 px-5 rounded-xl font-bold text-xs flex items-center space-x-2 shadow-sm transition-all ${
-                    isDark 
-                      ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' 
+                  className={`py-2.5 px-5 rounded-xl font-bold text-xs flex items-center space-x-2 shadow-sm transition-all ${isDark
+                      ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]'
                       : 'bg-slate-900 text-white hover:bg-slate-800'
-                  }`}
+                    }`}
                 >
                   <Save className="w-4 h-4" />
                   <span>{isSavingSettings ? 'Saving Settings...' : 'Save Branding Settings'}</span>
@@ -363,17 +368,15 @@ export default function PrintersView({ theme }) {
           </div>
 
           {/* Recent Print Jobs Audit Table */}
-          <div className={`p-5 rounded-2xl border space-y-4 ${
-            isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-          }`}>
+          <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
             <div className="flex justify-between items-center">
               <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <FileText className="w-5 h-5 text-[#C9A24B]" />
                 <span>Print Jobs Audit Trail</span>
               </h3>
-              <button onClick={fetchPrintJobs} className={`text-xs font-semibold flex items-center space-x-1 ${
-                isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}>
+              <button onClick={fetchPrintJobs} className={`text-xs font-semibold flex items-center space-x-1 ${isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}>
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Refresh Log</span>
               </button>
@@ -381,9 +384,8 @@ export default function PrintersView({ theme }) {
 
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
               <table className="w-full text-left text-xs">
-                <thead className={`font-mono border-b ${
-                  isDark ? 'bg-[#15181E] text-gray-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
-                }`}>
+                <thead className={`font-mono border-b ${isDark ? 'bg-[#15181E] text-gray-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
+                  }`}>
                   <tr>
                     <th className="p-3">Job ID</th>
                     <th className="p-3">Bill ID</th>
@@ -402,11 +404,10 @@ export default function PrintersView({ theme }) {
                         <td className="p-3 font-mono font-semibold">#JOB-{job.id}</td>
                         <td className="p-3 font-mono font-bold">Bill #{job.bill_id}</td>
                         <td className="p-3">
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                            job.status === 'success' 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700' 
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${job.status === 'success'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                          }`}>
+                            }`}>
                             {job.status}
                           </span>
                         </td>
@@ -421,17 +422,15 @@ export default function PrintersView({ theme }) {
         </div>
 
         {/* Right Column: Realistic Live Thermal Receipt Preview */}
-        <div className={`p-5 rounded-2xl border space-y-4 ${
-          isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
+        <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
           <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-700/60">
             <h3 className={`font-heading text-base font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <Printer className="w-4 h-4 text-[#C9A24B]" />
               <span>Live Thermal Receipt Preview</span>
             </h3>
-            <button onClick={fetchLatestVirtualReceipt} className={`text-xs font-semibold flex items-center space-x-1 ${
-              isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}>
+            <button onClick={fetchLatestVirtualReceipt} className={`text-xs font-semibold flex items-center space-x-1 ${isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}>
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Sync</span>
             </button>
@@ -442,9 +441,9 @@ export default function PrintersView({ theme }) {
           </p>
 
           {/* Physical Thermal Paper Styled Container */}
-          <div className="p-3 bg-slate-200 dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-800 flex justify-center">
-            <div className="w-full max-w-[320px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-snug p-4 rounded-xs shadow-md border border-slate-300 space-y-3 relative">
-              
+          <div className="p-3 bg-slate-200 dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-800 flex justify-center overflow-hidden">
+            <div className="w-full max-w-[340px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-snug p-3 rounded-xs shadow-md border border-slate-300 space-y-3 relative overflow-hidden">
+
               {/* Receipt Header Paper Edge Notch styling */}
               <div className="text-center space-y-1 border-b border-dashed border-slate-400 pb-3">
                 <div className="font-extrabold text-sm uppercase tracking-wide">{settings.shop_name}</div>
@@ -455,9 +454,9 @@ export default function PrintersView({ theme }) {
 
               {/* Sample / Live Receipt Content */}
               {virtualReceiptHtml ? (
-                <div 
-                  className="py-1 receipt-html-container overflow-x-auto text-slate-950 font-mono text-[11px]"
-                  dangerouslySetInnerHTML={{ __html: virtualReceiptHtml }} 
+                <div
+                  className="py-1 receipt-html-container text-slate-950 font-mono text-[11px] w-full overflow-hidden [&>div]:max-w-full [&>div]:w-full [&>div]:box-border [&>div]:p-1 [&>div]:shadow-none [&>div]:border-none"
+                  dangerouslySetInnerHTML={{ __html: virtualReceiptHtml }}
                 />
               ) : (
                 <div className="space-y-3 py-1">
@@ -510,7 +509,7 @@ export default function PrintersView({ theme }) {
               )}
 
               <div className="text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-2">
-                ⚡ Auto-prints via Print Agent (Port 9100)
+                ⚡ Auto-prints via Print Agent (Port 9101)
               </div>
             </div>
           </div>
@@ -518,12 +517,218 @@ export default function PrintersView({ theme }) {
 
       </div>
 
+      {/* Dynamic Product Catalog & Variant Options Card (Full Width at Bottom) */}
+      <div className={`p-5 rounded-2xl border space-y-4 ${
+        isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+      }`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3 border-slate-200 dark:border-slate-700/60">
+          <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <Settings className="w-5 h-5 text-[#C9A24B]" />
+            <span>Dynamic Product Catalog & Variant Options</span>
+          </h3>
+          <span className="text-xs font-mono font-semibold text-slate-400">
+            Configures Add Product Modal & POS Options
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveSettings} className="space-y-4">
+          <div>
+            <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+              Product Categories (Comma separated):
+            </label>
+            <input
+              type="text"
+              value={settings.categories || ''}
+              onChange={(e) => setSettings({ ...settings, categories: e.target.value })}
+              className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
+                isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
+              placeholder="Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(settings.categories || '').split(',').map((cat, idx) => (
+                <span key={idx} className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                  isDark ? 'bg-slate-800/80 text-amber-400 border-slate-700' : 'bg-amber-50 text-amber-800 border-amber-200/80'
+                }`}>
+                  {cat.trim()}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            <div className="flex flex-col justify-between p-3.5 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800">
+              <div>
+                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                  Garment Sizes Master List (Comma separated):
+                </label>
+                <input
+                  type="text"
+                  value={settings.available_sizes || ''}
+                  onChange={(e) => setSettings({ ...settings, available_sizes: e.target.value })}
+                  className={`w-full px-4 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
+                    isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  }`}
+                  placeholder="S, M, L, XL, XXL, 38, 40, 42, 44"
+                />
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                {(settings.available_sizes || '').split(',').map((sz, idx) => (
+                  <span key={idx} className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                    isDark ? 'bg-[#1F2229] text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-300 shadow-xs'
+                  }`}>
+                    {sz.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-between p-3.5 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800">
+              <div>
+                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                  Color Variants Master List (Comma separated):
+                </label>
+                <input
+                  type="text"
+                  value={settings.available_colors || ''}
+                  onChange={(e) => setSettings({ ...settings, available_colors: e.target.value })}
+                  className={`w-full px-4 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
+                    isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  }`}
+                  placeholder="White, Navy Blue, Black, Olive, Maroon, Beige"
+                />
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                {(settings.available_colors || '').split(',').map((cl, idx) => (
+                  <span key={idx} className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                    isDark ? 'bg-[#1F2229] text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-300 shadow-xs'
+                  }`}>
+                    {cl.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSavingSettings}
+              className={`py-2.5 px-6 rounded-xl font-bold text-xs flex items-center space-x-2 shadow-sm transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' 
+                  : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSavingSettings ? 'Saving Master Options...' : 'Save Product Master Options'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* System Typography & Global Font Configuration (Full Width Card at Bottom) */}
+      <div className={`p-5 rounded-2xl border space-y-4 ${
+        isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+      }`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3 border-slate-200 dark:border-slate-700/60">
+          <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <Type className="w-5 h-5 text-[#C9A24B]" />
+            <span>System Typography & Global Font Configuration</span>
+          </h3>
+          <span className="text-xs font-mono font-semibold text-slate-400">
+            Applies default heading and body fonts across all POS views & reports
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveSettings} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Heading Font Picker */}
+            <div className="p-4 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800 space-y-2">
+              <label className={`block text-xs font-bold ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                Heading Font Family (Applies to Titles & Headers):
+              </label>
+              <select
+                value={settings.heading_font || 'Plus Jakarta Sans'}
+                onChange={(e) => {
+                  const newH = e.target.value;
+                  setSettings({ ...settings, heading_font: newH });
+                  applyFontConfig(newH, settings.body_font);
+                }}
+                className={`w-full px-3.5 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] cursor-pointer ${
+                  isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                }`}
+              >
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans (Recommended - Modern & Sharp)</option>
+                <option value="Outfit">Outfit (Bold & Sleek)</option>
+                <option value="Poppins">Poppins (Clean & Geometric)</option>
+                <option value="Inter">Inter (Universal Executive)</option>
+                <option value="Roboto">Roboto (Structured Classic)</option>
+              </select>
+              <p className="text-[11px] text-slate-500 font-medium">Used for top headers, scorecard titles, and card headers.</p>
+            </div>
+
+            {/* Body Font Picker */}
+            <div className="p-4 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800 space-y-2">
+              <label className={`block text-xs font-bold ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                Body & Text Font Family (Applies to Tables & Normal Text):
+              </label>
+              <select
+                value={settings.body_font || 'Inter'}
+                onChange={(e) => {
+                  const newB = e.target.value;
+                  setSettings({ ...settings, body_font: newB });
+                  applyFontConfig(settings.heading_font, newB);
+                }}
+                className={`w-full px-3.5 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] cursor-pointer ${
+                  isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                }`}
+              >
+                <option value="Inter">Inter (Recommended - High Readability)</option>
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans (Clean Sans)</option>
+                <option value="Roboto">Roboto (Standard Neutral)</option>
+                <option value="Open Sans">Open Sans (Readable & Friendly)</option>
+              </select>
+              <p className="text-[11px] text-slate-500 font-medium">Used for numbers, tables, invoice item lines, and body text.</p>
+            </div>
+
+          </div>
+
+          {/* Live Typography Preview Box */}
+          <div className="p-4 rounded-xl border bg-amber-500/10 border-amber-500/20 space-y-1.5">
+            <div className="text-[11px] font-bold text-amber-500 uppercase tracking-wider font-mono">Live Font Preview</div>
+            <div className="font-heading text-lg font-black text-slate-900 dark:text-white">
+              SWAGZ FASHION — Executive Sales & Business Intelligence
+            </div>
+            <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+              Total Net Revenue: ₹4,82,500.00 • Completed Invoices: 326 orders • Gross Margin: 51.3%
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={isSavingSettings}
+              className={`py-2.5 px-6 rounded-xl font-bold text-xs flex items-center space-x-2 shadow-sm transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' 
+                  : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSavingSettings ? 'Saving Typography...' : 'Save Typography & Font Settings'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+
       {/* Add Thermal Printer Modal */}
       {showAddPrinterModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 ${
-            isDark ? 'bg-[#1E222A] border-[#2E3440] text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
             <div className="flex justify-between items-center border-b pb-3 border-slate-200 dark:border-slate-700">
               <h3 className="font-heading font-bold text-lg flex items-center space-x-2">
                 <Printer className="w-5 h-5 text-[#C9A24B]" />
@@ -629,9 +834,8 @@ export default function PrintersView({ theme }) {
                 </button>
                 <button
                   type="submit"
-                  className={`px-5 py-2 rounded-xl font-bold ${
-                    isDark ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' : 'bg-slate-900 text-white hover:bg-slate-800'
-                  }`}
+                  className={`px-5 py-2 rounded-xl font-bold ${isDark ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]' : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
                 >
                   Save Printer
                 </button>

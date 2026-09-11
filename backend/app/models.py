@@ -16,9 +16,20 @@ class BillStatus(str, enum.Enum):
     VOID = "void"
 
 class PrintJobStatus(str, enum.Enum):
-    PENDING = "pending"
-    SUCCESS = "success"
+    QUEUED = "queued"
+    PRINTING = "printing"
+    PRINTED = "printed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
+class ReceiptType(str, enum.Enum):
+    BILL = "bill"
+    ALTERATION_TAG = "alteration_tag"
+    SHIFT_REPORT = "shift_report"
+
+class ShiftStatus(str, enum.Enum):
+    OPEN = "open"
+    CLOSED = "closed"
 
 class AlterationStatus(str, enum.Enum):
     PENDING = "pending"
@@ -37,6 +48,8 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bills = relationship("Bill", back_populates="cashier")
+    shifts = relationship("Shift", back_populates="cashier")
+    audit_logs = relationship("AuditLog", back_populates="user")
 
 class Product(Base):
     __tablename__ = "products"
@@ -44,7 +57,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, index=True)
     brand = Column(String(100), nullable=False, index=True)
-    category = Column(String(100), nullable=False, index=True) # Shirts, T-Shirts, Trousers, Suits, Ethnic, Accessories
+    category = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
     base_price = Column(Float, nullable=False, default=0.0)
     cost_price = Column(Float, nullable=False, default=0.0)
@@ -60,10 +73,10 @@ class ProductVariant(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    size = Column(String(20), nullable=False) # S, M, L, XL, XXL, 28, 30, 32, 34, 36, 38
-    color = Column(String(50), nullable=False) # Black, Navy, White, Olive, Maroon, etc.
+    size = Column(String(20), nullable=False)
+    color = Column(String(50), nullable=False)
     sku_barcode = Column(String(100), unique=True, index=True, nullable=False)
-    price_override = Column(Float, nullable=True) # Optional variant-specific price
+    price_override = Column(Float, nullable=True)
     stock_qty = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -93,8 +106,10 @@ class Bill(Base):
     subtotal = Column(Float, default=0.0)
     discount_amount = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
+    cgst_amount = Column(Float, default=0.0)
+    sgst_amount = Column(Float, default=0.0)
     total_amount = Column(Float, default=0.0)
-    status = Column(String(20), default=BillStatus.CONFIRMED.value) # draft, parked, confirmed, void
+    status = Column(String(20), default=BillStatus.CONFIRMED.value)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -125,9 +140,9 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False)
-    mode = Column(String(20), nullable=False) # cash, upi, card, wallet
+    mode = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
-    reference_no = Column(String(100), nullable=True) # UTR or Card Auth code
+    reference_no = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bill = relationship("Bill", back_populates="payments")
@@ -139,6 +154,7 @@ class Return(Base):
     original_bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False)
     new_bill_id = Column(Integer, ForeignKey("bills.id"), nullable=True)
     reason = Column(String(255), nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     items = relationship("ReturnItem", back_populates="return_record", cascade="all, delete-orphan")
@@ -151,6 +167,7 @@ class ReturnItem(Base):
     variant_id = Column(Integer, ForeignKey("product_variants.id"), nullable=False)
     qty = Column(Integer, nullable=False, default=1)
     refund_amount = Column(Float, nullable=False)
+    condition = Column(String(50), default="good") # good, damaged
 
     return_record = relationship("Return", back_populates="items")
 
@@ -160,7 +177,7 @@ class StockAdjustment(Base):
     id = Column(Integer, primary_key=True, index=True)
     variant_id = Column(Integer, ForeignKey("product_variants.id"), nullable=False)
     change_qty = Column(Integer, nullable=False)
-    reason = Column(String(255), nullable=False) # Damage, Theft, Purchase, Audit Correction
+    reason = Column(String(255), nullable=False)
     adjusted_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -169,24 +186,28 @@ class Printer(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    connection_type = Column(String(20), default="usb") # usb, lan
+    connection_type = Column(String(20), default="usb")
     ip_address = Column(String(50), nullable=True)
     port = Column(Integer, default=9100)
-    device_path = Column(String(200), nullable=True) # e.g. /dev/usb/lp0 or COM3
-    paper_width_mm = Column(Integer, default=80) # 58 or 80
+    device_path = Column(String(200), nullable=True)
+    paper_width_mm = Column(Integer, default=80)
     is_default = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class PrintJob(Base):
     __tablename__ = "print_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False)
+    bill_id = Column(Integer, ForeignKey("bills.id"), nullable=True)
     printer_id = Column(Integer, ForeignKey("printers.id"), nullable=True)
-    status = Column(String(20), default=PrintJobStatus.PENDING.value)
-    attempts = Column(Integer, default=0)
+    receipt_type = Column(String(30), default=ReceiptType.BILL.value)
+    status = Column(String(20), default=PrintJobStatus.QUEUED.value)
+    attempt_count = Column(Integer, default=0)
+    payload_json = Column(Text, nullable=True)
     last_error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    printed_at = Column(DateTime, nullable=True)
 
     bill = relationship("Bill", back_populates="print_jobs")
 
@@ -202,6 +223,12 @@ class ShopSettings(Base):
     invoice_prefix = Column(String(20), default="SWZ-2026-")
     tax_default = Column(Float, default=5.0)
     receipt_footer = Column(Text, default="Thank you for shopping at Swagz! Goods once sold can be exchanged within 7 days with original tag & receipt.")
+    categories = Column(Text, default="Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear")
+    available_sizes = Column(Text, default="S, M, L, XL, XXL, 38, 40, 42, 44")
+    available_colors = Column(Text, default="White, Navy Blue, Black, Olive, Maroon, Beige")
+    heading_font = Column(String(100), default="Plus Jakarta Sans")
+    body_font = Column(String(100), default="Inter")
+
 
 class Alteration(Base):
     __tablename__ = "alterations"
@@ -210,10 +237,52 @@ class Alteration(Base):
     bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False)
     customer_name = Column(String(100), nullable=False)
     customer_phone = Column(String(20), nullable=False)
-    garment_details = Column(String(255), nullable=False) # e.g. Navy Slim Fit Trouser Size 32
-    alteration_notes = Column(Text, nullable=False) # e.g. Length shorten by 2 inches, waist loosen by 0.5 inch
+    garment_details = Column(String(255), nullable=False)
+    alteration_notes = Column(Text, nullable=False)
     status = Column(String(20), default=AlterationStatus.PENDING.value)
     pickup_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     bill = relationship("Bill", back_populates="alterations")
+
+class Shift(Base):
+    __tablename__ = "shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cashier_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    opening_cash = Column(Float, default=0.0, nullable=False)
+    cash_sales = Column(Float, default=0.0, nullable=False)
+    card_sales = Column(Float, default=0.0, nullable=False)
+    upi_sales = Column(Float, default=0.0, nullable=False)
+    returns_amount = Column(Float, default=0.0, nullable=False)
+    expected_cash = Column(Float, default=0.0, nullable=False)
+    actual_cash = Column(Float, default=0.0, nullable=True)
+    discrepancy = Column(Float, default=0.0, nullable=True)
+    notes = Column(Text, nullable=True)
+    status = Column(String(20), default=ShiftStatus.OPEN.value, nullable=False)
+    opened_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    closed_at = Column(DateTime, nullable=True)
+
+    cashier = relationship("User", back_populates="shifts")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    action = Column(String(50), nullable=False) # e.g. BILL_CREATED, BILL_VOIDED, PRICE_OVERRIDE, STOCK_ADJUSTMENT, SHIFT_OPENED
+    entity_type = Column(String(50), nullable=True)
+    entity_id = Column(Integer, nullable=True)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="audit_logs")
+
+class InvoiceSequence(Base):
+    __tablename__ = "invoice_sequences"
+
+    id = Column(Integer, primary_key=True)
+    prefix = Column(String(20), default="SWZ-2026-", unique=True)
+    current_val = Column(Integer, default=0, nullable=False)

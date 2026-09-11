@@ -57,7 +57,7 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[#2A2E39] pb-4 mb-5">
               <div className="flex items-center space-x-3">
-                <img src={swagzzWhiteLogo} alt="Swagz Logo" className="h-7 object-contain" />
+                <img src={swagzzWhiteLogo} alt="Swagz Logo" className="h-9 w-auto object-contain" />
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D]">
                   POS CHECKOUT
                 </span>
@@ -215,24 +215,13 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = `/alterations?bill_id=${confirmedBillData?.id || ''}`;
-                }}
-                className="py-2.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold text-xs hover:bg-amber-500/25 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-              >
-                <span>✂️</span>
-                <span>Book Alteration</span>
-              </button>
-
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={async () => {
                   if (!confirmedBillData) return;
                   try {
-                    await fetch('http://127.0.0.1:9100/print', {
+                    await fetch('http://127.0.0.1:9101/print', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -247,7 +236,7 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
                     alert("Failed to send reprint command");
                   }
                 }}
-                className="py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-amber-500" />
                 <span>Re-Print Receipt</span>

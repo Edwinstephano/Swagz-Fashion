@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ShoppingCart } from 'lucide-react';
 
 export default function VariantModal({ isOpen, onClose, product, onAddToCart, theme }) {
@@ -15,8 +16,8 @@ export default function VariantModal({ isOpen, onClose, product, onAddToCart, th
   const isDark = theme === 'dark';
   const price = selectedVariant?.price_override || product.base_price;
 
-  return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4 transition-all animate-fade-in ${
+  return createPortal(
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all animate-fade-in backdrop-blur-sm ${
       isDark ? 'bg-black/75' : 'bg-slate-900/35'
     }`}>
       <div className={`border rounded-3xl w-full max-w-2xl p-6 shadow-2xl transition-all ${
@@ -153,6 +154,7 @@ export default function VariantModal({ isOpen, onClose, product, onAddToCart, th
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

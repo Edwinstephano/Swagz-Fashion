@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, CheckCircle2, AlertCircle, Printer, Banknote, QrCode, CreditCard, Wallet, RotateCcw } from 'lucide-react';
 import swagLogo from '../assets/swag.png';
 import swagzzLogo from '../assets/swagzz.png';
@@ -49,9 +50,9 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
     }
   };
 
-  return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all ${
-      isDark ? 'bg-black/85 backdrop-blur-md' : 'bg-slate-900/40 backdrop-blur-xs'
+  return createPortal(
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all animate-fade-in backdrop-blur-sm ${
+      isDark ? 'bg-black/75' : 'bg-slate-900/35'
     }`}>
       <div className={`rounded-2xl w-full max-w-xl p-6 shadow-2xl transition-all border ${
         isDark ? 'bg-[#1F2229] border-[#2A2E39] text-white' : 'bg-white border-slate-200 text-slate-900'
@@ -99,142 +100,149 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
               {[
                 { id: 'cash', label: 'Cash', icon: Banknote },
                 { id: 'upi', label: 'UPI / QR', icon: QrCode },
-                { id: 'card', label: 'Card / POS', icon: CreditCard },
-              ].map((m) => {
-                const Icon = m.icon;
-                const active = paymentMode === m.id;
+                { id: 'card', label: 'Card', icon: CreditCard }
+              ].map((mode) => {
+                const Icon = mode.icon;
+                const active = paymentMode === mode.id;
                 return (
                   <button
-                    key={m.id}
-                    onClick={() => setPaymentMode(m.id)}
-                    className={`py-3 px-4 rounded-xl border flex flex-col items-center justify-center space-y-1.5 transition-all ${
+                    key={mode.id}
+                    onClick={() => setPaymentMode(mode.id)}
+                    className={`py-3 px-4 rounded-xl font-bold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all border ${
                       active
                         ? isDark
-                          ? 'bg-[#C9A24B] text-black font-bold border-[#C9A24B] shadow-md shadow-[#C9A24B]/20'
-                          : 'bg-amber-500 text-slate-950 font-extrabold border-amber-500 shadow-md shadow-amber-500/20'
+                          ? 'bg-[#C9A24B] text-black border-[#C9A24B] shadow-lg shadow-[#C9A24B]/20'
+                          : 'bg-amber-600 text-white border-amber-600 shadow-md'
                         : isDark
-                          ? 'bg-[#14161A] text-gray-300 border-[#2A2E39] hover:border-gray-600'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        ? 'bg-[#14161A] border-[#2A2E39] text-gray-400 hover:text-white hover:border-gray-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
-                    <span className="text-xs font-semibold">{m.label}</span>
+                    <span>{mode.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Specific Payment Input Fields */}
+            {/* Cash Input */}
             {paymentMode === 'cash' && (
-              <div className={`p-4 rounded-xl border mb-6 space-y-4 ${
-                isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-50/90 border-slate-200'
-              }`}>
+              <div className="space-y-4 mb-6">
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Cash Tendered by Customer (₹)</label>
+                  <label className={`block text-xs font-semibold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                    Cash Received (₹)
+                  </label>
                   <input
                     type="number"
                     value={cashTendered}
                     onChange={(e) => setCashTendered(e.target.value)}
-                    className={`w-full rounded-lg px-4 py-2.5 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[#C9A24B] border ${
-                      isDark ? 'bg-[#1F2229] border-gray-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    className={`w-full p-3 rounded-xl border font-mono text-lg font-bold transition-all ${
+                      isDark
+                        ? 'bg-[#14161A] border-[#2A2E39] text-white focus:border-[#C9A24B]'
+                        : 'bg-white border-slate-300 text-slate-900 focus:border-amber-600'
                     }`}
                   />
                 </div>
-                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-gray-800' : 'border-slate-200'}`}>
-                  <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>Change to Return:</span>
-                  <span className="text-xl font-bold font-mono text-[#3BAA75]">₹{changeDue.toFixed(2)}</span>
+                <div className={`p-3 rounded-xl border flex justify-between items-center ${
+                  isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Change to Return</span>
+                  <span className={`text-xl font-bold font-mono ${changeDue > 0 ? 'text-emerald-500' : isDark ? 'text-white' : 'text-slate-900'}`}>
+                    ₹{changeDue.toFixed(2)}
+                  </span>
                 </div>
               </div>
             )}
 
+            {/* UPI Input */}
             {paymentMode === 'upi' && (
-              <div className={`p-4 rounded-xl border mb-6 text-center space-y-3 ${
-                isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-50/90 border-slate-200'
-              }`}>
-                <div className={`w-32 h-32 bg-white p-2 rounded-lg mx-auto flex items-center justify-center border ${
-                  isDark ? 'border-gray-700' : 'border-slate-300 shadow-xs'
-                }`}>
-                  {/* Simulated QR Code */}
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=swagzfashion@upi&pn=SwagzFashion" alt="UPI QR" className="w-full h-full object-contain" />
-                </div>
-                <span className={`text-xs block ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>Scan QR code using Google Pay / PhonePe / Paytm</span>
+              <div className="space-y-4 mb-6">
                 <div>
-                  <label className={`block text-xs font-medium text-left mb-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>UPI UTR / Reference No. (Optional)</label>
+                  <label className={`block text-xs font-semibold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                    UPI Transaction / UTR Reference (Optional)
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. 426189912044"
+                    placeholder="e.g. 329182049102"
                     value={upiRef}
                     onChange={(e) => setUpiRef(e.target.value)}
-                    className={`w-full rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A24B] border ${
-                      isDark ? 'bg-[#1F2229] border-gray-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    className={`w-full p-3 rounded-xl border text-sm transition-all ${
+                      isDark
+                        ? 'bg-[#14161A] border-[#2A2E39] text-white focus:border-[#C9A24B]'
+                        : 'bg-white border-slate-300 text-slate-900 focus:border-amber-600'
                     }`}
                   />
                 </div>
               </div>
             )}
 
+            {/* Card Input */}
             {paymentMode === 'card' && (
-              <div className={`p-4 rounded-xl border mb-6 space-y-3 ${
-                isDark ? 'bg-[#14161A] border-[#2A2E39]' : 'bg-slate-50/90 border-slate-200'
-              }`}>
-                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Swipe or insert card on POS EDC machine.</p>
+              <div className="space-y-4 mb-6">
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Approval / Authorization Code</label>
+                  <label className={`block text-xs font-semibold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                    Card Approval Code / Last 4 Digits (Optional)
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. AUTH-88219"
+                    placeholder="e.g. 4819"
                     value={cardRef}
                     onChange={(e) => setCardRef(e.target.value)}
-                    className={`w-full rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A24B] border ${
-                      isDark ? 'bg-[#1F2229] border-gray-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    className={`w-full p-3 rounded-xl border text-sm transition-all ${
+                      isDark
+                        ? 'bg-[#14161A] border-[#2A2E39] text-white focus:border-[#C9A24B]'
+                        : 'bg-white border-slate-300 text-slate-900 focus:border-amber-600'
                     }`}
                   />
                 </div>
               </div>
             )}
 
-            {/* Confirm & Print Action */}
+            {/* Action Buttons */}
             <div className="flex space-x-3">
               <button
                 onClick={onClose}
-                className={`w-1/3 py-3 rounded-xl border font-medium transition-all ${
-                  isDark ? 'border-gray-700 text-gray-300 hover:bg-[#2A2E39]' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                className={`py-3 px-5 rounded-xl border font-bold text-xs transition-all ${
+                  isDark
+                    ? 'border-gray-700 text-gray-300 hover:bg-[#2A2E39]'
+                    : 'border-slate-300 text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                Back
+                Cancel
               </button>
               <button
                 onClick={handlePay}
                 disabled={isSubmitting || (paymentMode === 'cash' && parseFloat(cashTendered) < totalAmount)}
-                className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 shadow-lg disabled:opacity-40 transition-all ${
+                className={`flex-1 py-3 px-5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center space-x-2 ${
                   isDark
-                    ? 'bg-[#3BAA75] hover:bg-[#329465] text-white shadow-[#3BAA75]/20'
+                    ? 'bg-[#C9A24B] hover:bg-[#b89139] text-black font-extrabold shadow-[#C9A24B]/20'
                     : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                }`}
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {isSubmitting ? (
-                  <span>Processing & Auto-Printing...</span>
+                  <span>Processing Payment...</span>
                 ) : (
                   <>
-                    <Printer className="w-5 h-5" />
-                    <span>CONFIRM & AUTO-PRINT RECEIPT</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete Sale & Print Receipt</span>
                   </>
                 )}
               </button>
             </div>
           </>
         ) : (
-          /* Payment Success & Auto-Print Status Screen */
-          <div className="text-center py-4 space-y-4">
-            <div className="w-16 h-16 bg-[#3BAA75]/20 text-[#3BAA75] rounded-full flex items-center justify-center mx-auto border border-[#3BAA75]/40">
-              <CheckCircle2 className="w-10 h-10 animate-bounce" />
+          /* Payment Success & Receipt View */
+          <div className="text-center py-4 space-y-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 mx-auto flex items-center justify-center animate-bounce">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div>
-              <span className="text-xs font-mono text-[#C9A24B] uppercase tracking-wider">PAYMENT CONFIRMED</span>
-              <h3 className={`font-heading text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Bill #{confirmedBillData?.invoice_number}</h3>
-              <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
-                Total Paid: <span className={`font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>₹{confirmedBillData?.total_amount?.toFixed(2)}</span>
+              <h3 className={`text-2xl font-bold font-heading ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Payment Successful!
+              </h3>
+              <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                Bill #{confirmedBillData?.bill_number} • Total ₹{confirmedBillData?.grand_total?.toFixed(2)}
               </p>
             </div>
 

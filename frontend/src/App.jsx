@@ -12,7 +12,7 @@ import LoginView from './views/LoginView';
 
 const rolePermissions = {
   cashier: ['pos', 'returns'],
-  manager: ['pos', 'products', 'returns', 'reports'],
+  manager: ['pos', 'products', 'returns', 'reports', 'printers'],
   admin: ['pos', 'products', 'returns', 'reports', 'printers']
 };
 
@@ -52,6 +52,25 @@ export default function App() {
   });
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+
+  useEffect(() => {
+    const hFont = localStorage.getItem('swagz_heading_font') || 'Plus Jakarta Sans';
+    const bFont = localStorage.getItem('swagz_body_font') || 'Inter';
+    const loadFont = (fName) => {
+      if (!fName) return;
+      const safeId = `google-font-${fName.replace(/\s+/g, '-').toLowerCase()}`;
+      if (document.getElementById(safeId)) return;
+      const link = document.createElement('link');
+      link.id = safeId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${fName.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap`;
+      document.head.appendChild(link);
+    };
+    loadFont(hFont);
+    loadFont(bFont);
+    document.documentElement.style.setProperty('--font-heading', `'${hFont}', sans-serif`);
+    document.documentElement.style.setProperty('--font-body', `'${bFont}', sans-serif`);
+  }, []);
 
   // Enforce role-based module protection & fallback to POS if unauthorized
   useEffect(() => {

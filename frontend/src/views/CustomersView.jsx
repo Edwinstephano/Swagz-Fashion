@@ -231,7 +231,9 @@ export default function CustomersView({ theme }) {
 
       {/* Modal for Registering New Customer */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${
+          isDark ? 'bg-black/75' : 'bg-slate-900/35'
+        }`}>
           <div className={`w-full max-w-md rounded-2xl border p-6 space-y-5 shadow-2xl transition-all ${
             isDark ? 'bg-[#1F2229] border-[#2A2E39] text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>

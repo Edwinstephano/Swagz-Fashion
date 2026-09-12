@@ -342,7 +342,9 @@ export default function AddProductModal({ isOpen, onClose, onProductCreated, the
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                <div className="flex flex-col justify-between p-3.5 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800">
+                <div className={`flex flex-col justify-between p-3.5 rounded-xl border ${
+                  isDark ? 'bg-[#15181E] border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <div>
                     <label className={`text-xs font-bold block mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                       Sizes (Comma separated):
@@ -356,7 +358,9 @@ export default function AddProductModal({ isOpen, onClose, onProductCreated, the
                       }`}
                     />
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                  <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t ${
+                    isDark ? 'border-slate-800/80' : 'border-slate-200/80'
+                  }`}>
                     {masterSizes.map(sz => {
                       const active = selectedSizes.includes(sz);
                       return (
@@ -383,7 +387,9 @@ export default function AddProductModal({ isOpen, onClose, onProductCreated, the
                   </div>
                 </div>
 
-                <div className="flex flex-col justify-between p-3.5 rounded-xl border bg-slate-50/50 dark:bg-[#15181E] border-slate-200 dark:border-slate-800">
+                <div className={`flex flex-col justify-between p-3.5 rounded-xl border ${
+                  isDark ? 'bg-[#15181E] border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <div>
                     <label className={`text-xs font-bold block mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                       Colors (Comma separated):
@@ -397,7 +403,9 @@ export default function AddProductModal({ isOpen, onClose, onProductCreated, the
                       }`}
                     />
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                  <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t ${
+                    isDark ? 'border-slate-800/80' : 'border-slate-200/80'
+                  }`}>
                     {masterColors.map(cl => {
                       const active = selectedColors.includes(cl);
                       return (

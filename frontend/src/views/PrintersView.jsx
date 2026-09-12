@@ -2,9 +2,86 @@ import React, { useState, useEffect } from 'react';
 import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText, Type, Users, UserPlus, Trash2, KeyRound } from 'lucide-react';
 import swagLogo from '../assets/swag.png';
 import swagzzLogo from '../assets/swagzz.png';
+import swagzzWhiteLogo from '../assets/swagzz_white.png';
+import ConfirmModal from '../components/ConfirmModal';
+
+export const AVAILABLE_FONTS = [
+  { name: 'Merriweather', category: 'Serif / Editorial (Requested)' },
+  { name: 'Plus Jakarta Sans', category: 'Sans-Serif (Recommended)' },
+  { name: 'Inter', category: 'Sans-Serif (Recommended)' },
+  { name: 'Outfit', category: 'Sans-Serif' },
+  { name: 'Poppins', category: 'Sans-Serif' },
+  { name: 'Roboto', category: 'Sans-Serif' },
+  { name: 'Open Sans', category: 'Sans-Serif' },
+  { name: 'Montserrat', category: 'Sans-Serif' },
+  { name: 'Lato', category: 'Sans-Serif' },
+  { name: 'Oswald', category: 'Display' },
+  { name: 'Raleway', category: 'Sans-Serif' },
+  { name: 'Nunito', category: 'Sans-Serif' },
+  { name: 'Ubuntu', category: 'Sans-Serif' },
+  { name: 'Rubik', category: 'Sans-Serif' },
+  { name: 'Work Sans', category: 'Sans-Serif' },
+  { name: 'Quicksand', category: 'Sans-Serif' },
+  { name: 'DM Sans', category: 'Sans-Serif' },
+  { name: 'Fira Sans', category: 'Sans-Serif' },
+  { name: 'Cabin', category: 'Sans-Serif' },
+  { name: 'Josefin Sans', category: 'Display' },
+  { name: 'Syne', category: 'Display' },
+  { name: 'Space Grotesk', category: 'Display' },
+  { name: 'Urbanist', category: 'Sans-Serif' },
+  { name: 'Manrope', category: 'Sans-Serif' },
+  { name: 'Lexend', category: 'Sans-Serif' },
+  { name: 'Barlow', category: 'Sans-Serif' },
+  { name: 'Sora', category: 'Sans-Serif' },
+  { name: 'Red Hat Display', category: 'Display' },
+  { name: 'Figtree', category: 'Sans-Serif' },
+  { name: 'Playfair Display', category: 'Serif / Luxury' },
+  { name: 'Lora', category: 'Serif / Luxury' },
+  { name: 'Cinzel', category: 'Serif / Luxury' },
+  { name: 'Cormorant Garamond', category: 'Serif / Luxury' },
+  { name: 'Bodoni Moda', category: 'Serif / Luxury' },
+  { name: 'EB Garamond', category: 'Serif / Luxury' },
+  { name: 'Prata', category: 'Serif / Luxury' },
+  { name: 'Fraunces', category: 'Serif / Luxury' },
+  { name: 'Bitter', category: 'Serif / Slab' },
+  { name: 'DM Serif Display', category: 'Serif / Luxury' },
+  { name: 'Spectral', category: 'Serif / Luxury' },
+  { name: 'Arvo', category: 'Serif / Slab' },
+  { name: 'Zilla Slab', category: 'Serif / Slab' },
+  { name: 'Abril Fatface', category: 'Serif / Display' },
+  { name: 'Baskervville', category: 'Serif / Luxury' },
+  { name: 'JetBrains Mono', category: 'Monospace' },
+  { name: 'Fira Code', category: 'Monospace' },
+  { name: 'Roboto Mono', category: 'Monospace' },
+  { name: 'Space Mono', category: 'Monospace' },
+  { name: 'Inconsolata', category: 'Monospace' },
+  { name: 'Source Code Pro', category: 'Monospace' },
+  { name: 'IBM Plex Mono', category: 'Monospace' },
+  { name: 'Courier Prime', category: 'Monospace' },
+  { name: 'Ubuntu Mono', category: 'Monospace' },
+  { name: 'Share Tech Mono', category: 'Monospace' },
+  { name: 'PT Sans', category: 'Sans-Serif' },
+  { name: 'PT Serif', category: 'Serif' }
+];
+
+export const loadGoogleFont = (fontName) => {
+  if (!fontName) return;
+  const safeId = `google-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+  if (document.getElementById(safeId)) return;
+  const link = document.createElement('link');
+  link.id = safeId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap`;
+  document.head.appendChild(link);
+};
 
 export default function PrintersView({ currentUser, theme }) {
   const isDark = theme === 'dark';
+  const userRole = (currentUser?.role || localStorage.getItem('role') || 'cashier').toLowerCase();
+  const isAdmin = userRole === 'admin';
+  const isManager = userRole === 'manager';
+  const canCreateUsers = isAdmin || isManager;
+
   const [printers, setPrinters] = useState([]);
   const [printJobs, setPrintJobs] = useState([]);
   const [usersList, setUsersList] = useState([]);
@@ -27,6 +104,7 @@ export default function PrintersView({ currentUser, theme }) {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [showAddPrinterModal, setShowAddPrinterModal] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState(null);
   const [newPrinter, setNewPrinter] = useState({
     name: 'Counter Printer #2',
     connection_type: 'usb',
@@ -40,6 +118,8 @@ export default function PrintersView({ currentUser, theme }) {
   const applyFontConfig = (h, b) => {
     const headingFont = h || 'Plus Jakarta Sans';
     const bodyFont = b || 'Inter';
+    loadGoogleFont(headingFont);
+    loadGoogleFont(bodyFont);
     document.documentElement.style.setProperty('--font-heading', `'${headingFont}', sans-serif`);
     document.documentElement.style.setProperty('--font-body', `'${bodyFont}', sans-serif`);
     localStorage.setItem('swagz_heading_font', headingFont);
@@ -76,7 +156,10 @@ export default function PrintersView({ currentUser, theme }) {
   const fetchPrintJobs = async () => {
     try {
       const res = await fetch('/api/printers/jobs');
-      if (res.ok) setPrintJobs(await res.json());
+      if (res.ok) {
+        const jobs = await res.json();
+        setPrintJobs(jobs.slice(0, 3));
+      }
     } catch (e) { }
   };
 
@@ -206,25 +289,33 @@ export default function PrintersView({ currentUser, theme }) {
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
-  const handleDeleteUser = async (userId, username) => {
-    if (!window.confirm(`Are you sure you want to delete user account '${username}'?`)) return;
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/auth/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchUsers();
-        setStatusMessage({ type: 'success', text: `User account '${username}' deleted successfully.` });
-      } else {
-        const err = await res.json();
-        setStatusMessage({ type: 'error', text: err.detail || 'Failed to delete user.' });
+  const handleDeleteUser = (userId, username) => {
+    setConfirmModalConfig({
+      title: 'Delete Staff User Account',
+      message: `Are you sure you want to delete user account '@${username}'? They will no longer be able to log in to the POS system.`,
+      confirmText: 'Delete User Account',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModalConfig(null);
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`/api/auth/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            fetchUsers();
+            setStatusMessage({ type: 'success', text: `User account '${username}' deleted successfully.` });
+          } else {
+            const err = await res.json();
+            setStatusMessage({ type: 'error', text: err.detail || 'Failed to delete user.' });
+          }
+        } catch (e) {
+          setStatusMessage({ type: 'error', text: 'Error deleting user.' });
+        }
+        setTimeout(() => setStatusMessage(null), 4000);
       }
-    } catch (e) {
-      setStatusMessage({ type: 'error', text: 'Error deleting user.' });
-    }
-    setTimeout(() => setStatusMessage(null), 4000);
+    });
   };
 
   return (
@@ -245,13 +336,6 @@ export default function PrintersView({ currentUser, theme }) {
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setShowAddUserModal(true)}
-            className="py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm bg-[#D49018] text-white hover:brightness-110 cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add Staff User</span>
-          </button>
           <button
             onClick={() => setShowAddPrinterModal(true)}
             className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm cursor-pointer ${isDark
@@ -283,75 +367,6 @@ export default function PrintersView({ currentUser, theme }) {
 
         {/* Left Column: Printers & Settings Form */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Staff Accounts Card */}
-          <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
-            }`}>
-            <div className="flex justify-between items-center">
-              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                <Users className="w-5 h-5 text-[#D49018]" />
-                <span>Staff Accounts & User Registry</span>
-              </h3>
-              <button
-                onClick={() => setShowAddUserModal(true)}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D49018]/15 border border-[#D49018]/40 text-[#D49018] hover:bg-[#D49018]/25 flex items-center space-x-1.5 transition-all cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>New User</span>
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {usersList.length === 0 ? (
-                <div className={`p-6 text-center text-xs rounded-xl border border-dashed ${isDark ? 'border-gray-700 text-gray-400' : 'border-slate-300 text-slate-500'}`}>
-                  No staff users found. Click "New User" to create staff accounts.
-                </div>
-              ) : (
-                usersList.map(u => {
-                  const isSelf = currentUser?.username === u.username;
-                  const roleBadgeColor =
-                    u.role === 'admin'
-                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                      : u.role === 'manager'
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-                  return (
-                    <div key={u.id} className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${isDark ? 'bg-[#15181E] border-[#2E3440]' : 'bg-slate-50 border-slate-200'}`}>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-[#D49018]/20 text-[#D49018] font-bold text-xs flex items-center justify-center uppercase border border-[#D49018]/40 shrink-0">
-                          {u.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{u.name}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-mono uppercase font-bold border ${roleBadgeColor}`}>
-                              {u.role}
-                            </span>
-                            {isSelf && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-700 text-slate-300">YOU</span>
-                            )}
-                          </div>
-                          <span className={`text-xs font-mono block ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                            @{u.username}
-                          </span>
-                        </div>
-                      </div>
-
-                      {!isSelf && (
-                        <button
-                          onClick={() => handleDeleteUser(u.id, u.username)}
-                          className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
-                          title="Delete User Account"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
 
           {/* Configured Printers Card */}
           <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
@@ -540,7 +555,7 @@ export default function PrintersView({ currentUser, theme }) {
                       <td colSpan={4} className="p-4 text-center text-xs text-slate-500">No thermal print logs recorded yet.</td>
                     </tr>
                   ) : (
-                    printJobs.map(job => (
+                    printJobs.slice(0, 3).map(job => (
                       <tr key={job.id} className={isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}>
                         <td className="p-3 font-mono font-semibold">#JOB-{job.id}</td>
                         <td className="p-3 font-mono font-bold">Bill #{job.bill_id}</td>
@@ -587,6 +602,11 @@ export default function PrintersView({ currentUser, theme }) {
 
               {/* Receipt Header Paper Edge Notch styling */}
               <div className="text-center space-y-1.5 border-b border-dashed border-slate-400 pb-3.5">
+                <img
+                  src={swagzzWhiteLogo}
+                  alt="Swagz Logo"
+                  className="h-14 w-auto max-w-[180px] mx-auto object-contain brightness-0 my-1.5"
+                />
                 <div className="font-extrabold text-sm uppercase tracking-wide">{settings.shop_name}</div>
                 <div className="text-[10px] text-slate-700">{settings.address}</div>
                 <div className="text-[10px] text-slate-700 font-bold">Ph: {settings.phone}</div>
@@ -682,76 +702,37 @@ export default function PrintersView({ currentUser, theme }) {
               }`}
               placeholder="Shirts, Jeans, Suits, Ethnic, T-Shirts, Accessories, Footwear"
             />
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(settings.categories || '').split(',').map((cat, idx) => (
-                <span key={idx} className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                  isDark ? 'bg-slate-800/80 text-amber-400 border-slate-700' : 'bg-amber-50 text-amber-800 border-amber-200/80'
-                }`}>
-                  {cat.trim()}
-                </span>
-              ))}
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-            <div className={`flex flex-col justify-between p-3.5 rounded-xl border ${
-              isDark ? 'bg-[#15181E] border-slate-800' : 'bg-slate-50/80 border-slate-200'
-            }`}>
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
-                  Garment Sizes Master List (Comma separated):
-                </label>
-                <input
-                  type="text"
-                  value={settings.available_sizes || ''}
-                  onChange={(e) => setSettings({ ...settings, available_sizes: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                    isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  placeholder="S, M, L, XL, XXL, 38, 40, 42, 44"
-                />
-              </div>
-              <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t ${
-                isDark ? 'border-slate-800/80' : 'border-slate-200/60'
-              }`}>
-                {(settings.available_sizes || '').split(',').map((sz, idx) => (
-                  <span key={idx} className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
-                    isDark ? 'bg-[#1F2229] text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-300 shadow-xs'
-                  }`}>
-                    {sz.trim()}
-                  </span>
-                ))}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                Garment Sizes Master List (Comma separated):
+              </label>
+              <input
+                type="text"
+                value={settings.available_sizes || ''}
+                onChange={(e) => setSettings({ ...settings, available_sizes: e.target.value })}
+                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
+                  isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+                placeholder="S, M, L, XL, XXL, 38, 40, 42, 44"
+              />
             </div>
 
-            <div className={`flex flex-col justify-between p-3.5 rounded-xl border ${
-              isDark ? 'bg-[#15181E] border-slate-800' : 'bg-slate-50/80 border-slate-200'
-            }`}>
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
-                  Color Variants Master List (Comma separated):
-                </label>
-                <input
-                  type="text"
-                  value={settings.available_colors || ''}
-                  onChange={(e) => setSettings({ ...settings, available_colors: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
-                    isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  placeholder="White, Navy Blue, Black, Olive, Maroon, Beige"
-                />
-              </div>
-              <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t ${
-                isDark ? 'border-slate-800/80' : 'border-slate-200/60'
-              }`}>
-                {(settings.available_colors || '').split(',').map((cl, idx) => (
-                  <span key={idx} className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
-                    isDark ? 'bg-[#1F2229] text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-300 shadow-xs'
-                  }`}>
-                    {cl.trim()}
-                  </span>
-                ))}
-              </div>
+            <div>
+              <label className={`block text-xs font-bold mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
+                Color Variants Master List (Comma separated):
+              </label>
+              <input
+                type="text"
+                value={settings.available_colors || ''}
+                onChange={(e) => setSettings({ ...settings, available_colors: e.target.value })}
+                className={`w-full px-4 py-2.5 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#C9A24B] ${
+                  isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+                placeholder="White, Navy Blue, Black, Olive, Maroon, Beige"
+              />
             </div>
           </div>
 
@@ -809,11 +790,11 @@ export default function PrintersView({ currentUser, theme }) {
                   isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="Plus Jakarta Sans">Plus Jakarta Sans (Recommended - Modern & Sharp)</option>
-                <option value="Outfit">Outfit (Bold & Sleek)</option>
-                <option value="Poppins">Poppins (Clean & Geometric)</option>
-                <option value="Inter">Inter (Universal Executive)</option>
-                <option value="Roboto">Roboto (Structured Classic)</option>
+                {AVAILABLE_FONTS.map(f => (
+                  <option key={f.name} value={f.name}>
+                    {f.name} ({f.category})
+                  </option>
+                ))}
               </select>
               <p className="text-[11px] text-slate-500 font-medium">Used for top headers, scorecard titles, and card headers.</p>
             </div>
@@ -836,10 +817,11 @@ export default function PrintersView({ currentUser, theme }) {
                   isDark ? 'bg-[#1E222A] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="Inter">Inter (Recommended - High Readability)</option>
-                <option value="Plus Jakarta Sans">Plus Jakarta Sans (Clean Sans)</option>
-                <option value="Roboto">Roboto (Standard Neutral)</option>
-                <option value="Open Sans">Open Sans (Readable & Friendly)</option>
+                {AVAILABLE_FONTS.map(f => (
+                  <option key={f.name} value={f.name}>
+                    {f.name} ({f.category})
+                  </option>
+                ))}
               </select>
               <p className="text-[11px] text-slate-500 font-medium">Used for numbers, tables, invoice item lines, and body text.</p>
             </div>
@@ -876,10 +858,86 @@ export default function PrintersView({ currentUser, theme }) {
         </form>
       </div>
 
+      {/* Staff Accounts & User Registry Card (Full Width at Bottom of Page) */}
+      <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+        }`}>
+        <div className="flex justify-between items-center">
+          <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <Users className="w-5 h-5 text-[#D49018]" />
+            <span>Staff Accounts & User Registry</span>
+          </h3>
+          {canCreateUsers && (
+            <button
+              onClick={() => {
+                setNewUser({ name: '', username: '', password: '', role: 'cashier' });
+                setShowAddUserModal(true);
+              }}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D49018]/15 border border-[#D49018]/40 text-[#D49018] hover:bg-[#D49018]/25 flex items-center space-x-1.5 transition-all cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>New User</span>
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          {usersList.length === 0 ? (
+            <div className={`p-6 text-center text-xs rounded-xl border border-dashed ${isDark ? 'border-gray-700 text-gray-400' : 'border-slate-300 text-slate-500'}`}>
+              No staff users found. Click "New User" to create staff accounts.
+            </div>
+          ) : (
+            usersList.map(u => {
+              const isSelf = currentUser?.username === u.username;
+              const roleBadgeColor =
+                u.role === 'admin'
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                  : u.role === 'manager'
+                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+              return (
+                <div key={u.id} className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${isDark ? 'bg-[#15181E] border-[#2E3440]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 rounded-full bg-[#D49018]/20 text-[#D49018] font-bold text-xs flex items-center justify-center uppercase border border-[#D49018]/40 shrink-0">
+                      {u.name?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{u.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-mono uppercase font-bold border ${roleBadgeColor}`}>
+                          {u.role}
+                        </span>
+                        {isSelf && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-700 text-slate-300">YOU</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-mono block ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        @{u.username}
+                      </span>
+                    </div>
+                  </div>
+
+                  {!isSelf && (isAdmin || (isManager && u.role === 'cashier')) && (
+                    <button
+                      onClick={() => handleDeleteUser(u.id, u.username)}
+                      className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
+                      title="Delete User Account"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
 
       {/* Add Thermal Printer Modal */}
       {showAddPrinterModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50 ${
+          isDark ? 'bg-black/75' : 'bg-slate-900/35'
+        }`}>
           <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
             <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -1000,7 +1058,9 @@ export default function PrintersView({ currentUser, theme }) {
 
       {/* Add Staff Account Modal */}
       {showAddUserModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in-up">
+        <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-up ${
+          isDark ? 'bg-black/75' : 'bg-slate-900/35'
+        }`}>
           <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
             <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -1058,9 +1118,14 @@ export default function PrintersView({ currentUser, theme }) {
                   className={`w-full p-3 rounded-xl border cursor-pointer font-mono ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300'}`}
                 >
                   <option value="cashier">💳 Cashier Staff (POS Billing & Returns)</option>
-                  <option value="manager">🏬 Store Manager (Billing, Products & Reports)</option>
-                  <option value="admin">👑 Admin Director (Full Access & Settings)</option>
+                  {isAdmin && <option value="manager">🏬 Store Manager (Billing, Products & Reports)</option>}
+                  {isAdmin && <option value="admin">👑 Admin Director (Full Access & Settings)</option>}
                 </select>
+                {isManager && !isAdmin && (
+                  <p className="text-[10px] text-[#D49018] font-mono mt-1 flex items-center space-x-1">
+                    <span>ℹ Store Managers are authorized to create Cashier staff accounts.</span>
+                  </p>
+                )}
               </div>
 
               <div className={`flex justify-end space-x-2 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -1081,6 +1146,19 @@ export default function PrintersView({ currentUser, theme }) {
             </form>
           </div>
         </div>
+      )}
+
+      {confirmModalConfig && (
+        <ConfirmModal
+          isOpen={true}
+          title={confirmModalConfig.title}
+          message={confirmModalConfig.message}
+          confirmText={confirmModalConfig.confirmText}
+          variant={confirmModalConfig.variant}
+          onConfirm={confirmModalConfig.onConfirm}
+          onCancel={() => setConfirmModalConfig(null)}
+          theme={theme}
+        />
       )}
 
     </div>

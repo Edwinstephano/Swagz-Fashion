@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import AddProductModal from '../components/AddProductModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ProductsView({ currentUser, theme }) {
   const isDark = theme === 'dark';
   const [products, setProducts] = useState([]);
   const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'archived', 'all'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState(null);
 
   useEffect(() => {
     fetchProducts(statusFilter);
@@ -23,16 +25,22 @@ export default function ProductsView({ currentUser, theme }) {
     }
   };
 
-  const handleArchiveProduct = async (id, productName) => {
-    if (!window.confirm(`Archive "${productName}"? It will be hidden from POS sales until reopened.`)) return;
-    try {
-      const res = await fetch(`/api/products/${id}/archive`, { method: 'PUT' });
-      if (res.ok) {
-        fetchProducts(statusFilter);
+  const handleArchiveProduct = (id, productName) => {
+    setConfirmModalConfig({
+      title: 'Archive Product Style',
+      message: `Archive "${productName}"? It will be hidden from POS sales until reopened.`,
+      confirmText: 'Archive Style',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmModalConfig(null);
+        try {
+          const res = await fetch(`/api/products/${id}/archive`, { method: 'PUT' });
+          if (res.ok) {
+            fetchProducts(statusFilter);
+          }
+        } catch (e) {}
       }
-    } catch (e) {
-      alert("Failed to archive product");
-    }
+    });
   };
 
   const handleReopenProduct = async (id, productName) => {
@@ -40,23 +48,26 @@ export default function ProductsView({ currentUser, theme }) {
       const res = await fetch(`/api/products/${id}/reopen`, { method: 'PUT' });
       if (res.ok) {
         fetchProducts(statusFilter);
-        alert(`"${productName}" has been reopened and restored to POS catalog!`);
       }
-    } catch (e) {
-      alert("Failed to reopen product");
-    }
+    } catch (e) {}
   };
 
-  const handleDeleteProduct = async (id, productName) => {
-    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE "${productName}"? This action cannot be undone.`)) return;
-    try {
-      const res = await fetch(`/api/products/${id}?permanent=true`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchProducts(statusFilter);
+  const handleDeleteProduct = (id, productName) => {
+    setConfirmModalConfig({
+      title: 'Permanently Delete Product',
+      message: `Are you sure you want to PERMANENTLY DELETE "${productName}"? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModalConfig(null);
+        try {
+          const res = await fetch(`/api/products/${id}?permanent=true`, { method: 'DELETE' });
+          if (res.ok) {
+            fetchProducts(statusFilter);
+          }
+        } catch (e) {}
       }
-    } catch (e) {
-      alert("Failed to delete product");
-    }
+    });
   };
 
   return (
@@ -229,6 +240,19 @@ export default function ProductsView({ currentUser, theme }) {
         onProductCreated={() => fetchProducts(statusFilter)}
         theme={theme}
       />
+
+      {confirmModalConfig && (
+        <ConfirmModal
+          isOpen={true}
+          title={confirmModalConfig.title}
+          message={confirmModalConfig.message}
+          confirmText={confirmModalConfig.confirmText}
+          variant={confirmModalConfig.variant}
+          onConfirm={confirmModalConfig.onConfirm}
+          onCancel={() => setConfirmModalConfig(null)}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

@@ -44,7 +44,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
-    return { name: 'Admin Director', username: 'admin', role: 'admin' };
+    return null;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -131,35 +131,9 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('swagz_user');
+    setCurrentUser(null);
     setIsAuthenticated(false);
     setIsRoleModalOpen(false);
-  };
-
-  const loginAsUser = async (username) => {
-    try {
-      const password = username === 'admin' ? 'admin123' : username === 'manager' ? 'manager123' : 'cashier123';
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('token', data.access_token);
-        const u = { name: data.name, username: data.username, role: data.role };
-        localStorage.setItem('swagz_user', JSON.stringify(u));
-        setCurrentUser(u);
-        setIsAuthenticated(true);
-
-        const userRole = (u.role || 'cashier').toLowerCase();
-        const allowedTabs = rolePermissions[userRole] || rolePermissions.cashier;
-        if (!allowedTabs.includes(activeTab)) {
-          setActiveTab('pos');
-        }
-      }
-    } catch (e) {
-      console.error("Auto login error", e);
-    }
   };
 
   const isDark = theme === 'dark';
@@ -191,15 +165,14 @@ export default function App() {
         {activeTab === 'products' && isAllowed('products') && <ProductsView currentUser={currentUser} theme={theme} />}
         {activeTab === 'returns' && isAllowed('returns') && <ReturnsView currentUser={currentUser} theme={theme} />}
         {activeTab === 'reports' && isAllowed('reports') && <ReportsView theme={theme} />}
-        {activeTab === 'printers' && isAllowed('printers') && <PrintersView theme={theme} />}
+        {activeTab === 'printers' && isAllowed('printers') && <PrintersView currentUser={currentUser} theme={theme} />}
       </main>
 
-      {/* Role Switcher Modal */}
+      {/* Staff Profile Modal */}
       <RoleModal
         isOpen={isRoleModalOpen}
         onClose={() => setIsRoleModalOpen(false)}
         currentUser={currentUser}
-        onSelectUser={(u) => loginAsUser(u.username)}
         onLogout={handleLogout}
         theme={theme}
       />

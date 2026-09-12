@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText, Type } from 'lucide-react';
+import { Printer, RefreshCw, Send, CheckCircle2, AlertCircle, Settings, Store, Plus, Save, Check, X, Shield, FileText, Type, Users, UserPlus, Trash2, KeyRound } from 'lucide-react';
 import swagLogo from '../assets/swag.png';
 import swagzzLogo from '../assets/swagzz.png';
 
-export default function PrintersView({ theme }) {
+export default function PrintersView({ currentUser, theme }) {
   const isDark = theme === 'dark';
   const [printers, setPrinters] = useState([]);
   const [printJobs, setPrintJobs] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'cashier' });
+  
   const [settings, setSettings] = useState({
     shop_name: 'SWAGZ FASHION — MENSWEAR',
     address: '74 Luxury Boulevard, Tailor District, New Delhi - 110001',
@@ -46,8 +50,21 @@ export default function PrintersView({ theme }) {
     fetchPrinters();
     fetchPrintJobs();
     fetchSettings();
+    fetchUsers();
     fetchLatestVirtualReceipt();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsersList(await res.json());
+      }
+    } catch (e) {}
+  };
 
   const fetchPrinters = async () => {
     try {
@@ -162,6 +179,54 @@ export default function PrintersView({ theme }) {
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newUser)
+      });
+      if (res.ok) {
+        setShowAddUserModal(false);
+        setNewUser({ name: '', username: '', password: '', role: 'cashier' });
+        fetchUsers();
+        setStatusMessage({ type: 'success', text: `User account '${newUser.username}' created successfully!` });
+      } else {
+        const err = await res.json();
+        setStatusMessage({ type: 'error', text: err.detail || 'Failed to create user account.' });
+      }
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: 'Error connecting to server.' });
+    }
+    setTimeout(() => setStatusMessage(null), 4000);
+  };
+
+  const handleDeleteUser = async (userId, username) => {
+    if (!window.confirm(`Are you sure you want to delete user account '${username}'?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/auth/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchUsers();
+        setStatusMessage({ type: 'success', text: `User account '${username}' deleted successfully.` });
+      } else {
+        const err = await res.json();
+        setStatusMessage({ type: 'error', text: err.detail || 'Failed to delete user.' });
+      }
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: 'Error deleting user.' });
+    }
+    setTimeout(() => setStatusMessage(null), 4000);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
@@ -172,18 +237,25 @@ export default function PrintersView({ theme }) {
           <div>
             <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2.5 ${isDark ? 'text-white' : 'text-slate-900'
               }`}>
-              <span>Thermal Printers & Shop Settings</span>
+              <span>System Settings & Staff Administration</span>
             </h2>
             <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
-              Configure USB/LAN receipt printers, manage invoice branding & headers, and preview live print output.
+              Manage staff user accounts, configure USB/LAN receipt printers, update shop branding & global typography.
             </p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
           <button
+            onClick={() => setShowAddUserModal(true)}
+            className="py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm bg-[#D49018] text-white hover:brightness-110 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add Staff User</span>
+          </button>
+          <button
             onClick={() => setShowAddPrinterModal(true)}
-            className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm ${isDark
-                ? 'bg-[#C9A24B] text-slate-950 hover:bg-[#b89139]'
+            className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center space-x-2 transition-all shadow-sm cursor-pointer ${isDark
+                ? 'bg-slate-800 text-white hover:bg-slate-700'
                 : 'bg-slate-900 text-white hover:bg-slate-800'
               }`}
           >
@@ -211,6 +283,75 @@ export default function PrintersView({ theme }) {
 
         {/* Left Column: Printers & Settings Form */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Staff Accounts Card */}
+          <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+            <div className="flex justify-between items-center">
+              <h3 className={`font-heading text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <Users className="w-5 h-5 text-[#D49018]" />
+                <span>Staff Accounts & User Registry</span>
+              </h3>
+              <button
+                onClick={() => setShowAddUserModal(true)}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D49018]/15 border border-[#D49018]/40 text-[#D49018] hover:bg-[#D49018]/25 flex items-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>New User</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {usersList.length === 0 ? (
+                <div className={`p-6 text-center text-xs rounded-xl border border-dashed ${isDark ? 'border-gray-700 text-gray-400' : 'border-slate-300 text-slate-500'}`}>
+                  No staff users found. Click "New User" to create staff accounts.
+                </div>
+              ) : (
+                usersList.map(u => {
+                  const isSelf = currentUser?.username === u.username;
+                  const roleBadgeColor =
+                    u.role === 'admin'
+                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                      : u.role === 'manager'
+                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                  return (
+                    <div key={u.id} className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${isDark ? 'bg-[#15181E] border-[#2E3440]' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-9 h-9 rounded-full bg-[#D49018]/20 text-[#D49018] font-bold text-xs flex items-center justify-center uppercase border border-[#D49018]/40 shrink-0">
+                          {u.name?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{u.name}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-mono uppercase font-bold border ${roleBadgeColor}`}>
+                              {u.role}
+                            </span>
+                            {isSelf && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-700 text-slate-300">YOU</span>
+                            )}
+                          </div>
+                          <span className={`text-xs font-mono block ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                            @{u.username}
+                          </span>
+                        </div>
+                      </div>
+
+                      {!isSelf && (
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.username)}
+                          className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
+                          title="Delete User Account"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           {/* Configured Printers Card */}
           <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] shadow-lg' : 'bg-white border-slate-200 shadow-sm'
@@ -441,15 +582,14 @@ export default function PrintersView({ theme }) {
           </p>
 
           {/* Physical Thermal Paper Styled Container */}
-          <div className={`p-3 rounded-xl border flex justify-center overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'}`}>
-            <div className="w-full max-w-[340px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-snug p-3 rounded-xs shadow-md border border-slate-300 space-y-3 relative overflow-hidden">
+          <div className={`p-4 rounded-xl border flex justify-center overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'}`}>
+            <div className="w-full max-w-[340px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-relaxed p-4 rounded-xs shadow-md border border-slate-300 space-y-4 relative overflow-hidden">
 
               {/* Receipt Header Paper Edge Notch styling */}
-              <div className="text-center space-y-1 border-b border-dashed border-slate-400 pb-3">
+              <div className="text-center space-y-1.5 border-b border-dashed border-slate-400 pb-3.5">
                 <div className="font-extrabold text-sm uppercase tracking-wide">{settings.shop_name}</div>
                 <div className="text-[10px] text-slate-700">{settings.address}</div>
                 <div className="text-[10px] text-slate-700 font-bold">Ph: {settings.phone}</div>
-                <div className="text-[10px] font-bold text-slate-800">GSTIN: {settings.gstin}</div>
               </div>
 
               {/* Sample / Live Receipt Content */}
@@ -459,13 +599,13 @@ export default function PrintersView({ theme }) {
                   dangerouslySetInnerHTML={{ __html: virtualReceiptHtml }}
                 />
               ) : (
-                <div className="space-y-3 py-1">
-                  <div className="flex justify-between text-[10px] font-bold border-b border-dashed border-slate-300 pb-1">
-                    <span>INVOICE: #SAMPLE-101</span>
+                <div className="space-y-4 py-1">
+                  <div className="flex justify-between text-[10px] font-bold border-b border-dashed border-slate-300 pb-2">
+                    <span>INVOICE: #SWZ-2026-101</span>
                     <span>{new Date().toLocaleDateString()}</span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-2 py-1">
                     <div className="flex justify-between font-bold text-slate-900">
                       <span>1x Signature Linen Shirt (L)</span>
                       <span>₹2,499.00</span>
@@ -476,39 +616,36 @@ export default function PrintersView({ theme }) {
                     </div>
                   </div>
 
-                  <div className="border-t border-b border-dashed border-slate-400 py-2 space-y-1">
-                    <div className="flex justify-between">
+                  <div className="border-t border-b border-dashed border-slate-400 py-3 space-y-1.5 my-2">
+                    <div className="flex justify-between text-slate-700">
                       <span>Subtotal:</span>
-                      <span>₹4,398.00</span>
+                      <span className="font-bold text-slate-900">₹4,398.00</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>GST (12%):</span>
-                      <span>₹527.76</span>
+                    <div className="flex justify-between text-rose-600 font-semibold">
+                      <span>Discount:</span>
+                      <span>-₹200.00</span>
                     </div>
-                    <div className="flex justify-between font-extrabold text-xs text-slate-950 pt-1 border-t border-slate-400">
-                      <span>TOTAL:</span>
-                      <span>₹4,925.76</span>
+                    <div className="flex justify-between text-slate-700">
+                      <span>GST (5%):</span>
+                      <span className="font-bold text-slate-900">₹209.90</span>
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-700">
+                    <div className="flex justify-between font-extrabold text-xs text-slate-950 pt-2 border-t border-slate-400">
+                      <span>NET TOTAL:</span>
+                      <span>₹4,407.90</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-700 pt-1">
                       <span>Paid via UPI / Cash:</span>
-                      <span>₹4,925.76</span>
+                      <span>₹4,407.90</span>
                     </div>
                   </div>
 
-                  <div className="text-center text-[9px] text-slate-600 pt-1 leading-tight italic">
+                  <div className="text-center text-[9px] text-slate-600 pt-2 leading-relaxed italic">
                     {settings.receipt_footer}
-                  </div>
-
-                  <div className="pt-2 text-center">
-                    <div className="inline-block px-3 py-1 bg-slate-900 text-white text-[9px] font-mono font-bold rounded">
-                      ||| |||| || ||||| ||| ||||
-                    </div>
-                    <div className="text-[9px] text-slate-500 font-mono mt-0.5">SAMPLE PREVIEW</div>
                   </div>
                 </div>
               )}
 
-              <div className="text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-2">
+              <div className="text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-3">
                 ⚡ Auto-prints via Print Agent (Port 9101)
               </div>
             </div>
@@ -861,7 +998,91 @@ export default function PrintersView({ theme }) {
         </div>
       )}
 
+      {/* Add Staff Account Modal */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in-up">
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 ${isDark ? 'bg-[#1E222A] border-[#2E3440] text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
+            <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <h3 className="font-heading font-bold text-lg flex items-center space-x-2">
+                <UserPlus className="w-5 h-5 text-[#D49018]" />
+                <span>Create Staff User Account</span>
+              </h3>
+              <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-200 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddUser} className="space-y-3.5 text-xs font-semibold">
+              <div>
+                <label className="block mb-1 font-mono uppercase text-[11px]">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  placeholder="e.g. Rahul Sharma"
+                  className={`w-full p-3 rounded-xl border ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300'}`}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-mono uppercase text-[11px]">Username</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                  placeholder="e.g. rahul"
+                  className={`w-full p-3 rounded-xl border font-mono ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300'}`}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-mono uppercase text-[11px]">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder="Set account password"
+                  className={`w-full p-3 rounded-xl border font-mono ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300'}`}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-mono uppercase text-[11px]">Assigned Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className={`w-full p-3 rounded-xl border cursor-pointer font-mono ${isDark ? 'bg-[#15181E] border-slate-700 text-white' : 'bg-slate-50 border-slate-300'}`}
+                >
+                  <option value="cashier">💳 Cashier Staff (POS Billing & Returns)</option>
+                  <option value="manager">🏬 Store Manager (Billing, Products & Reports)</option>
+                  <option value="admin">👑 Admin Director (Full Access & Settings)</option>
+                </select>
+              </div>
+
+              <div className={`flex justify-end space-x-2 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className={`px-4 py-2 rounded-xl cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl font-bold bg-[#D49018] text-white hover:brightness-110 shadow-sm cursor-pointer"
+                >
+                  Create User Account
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-

@@ -93,51 +93,49 @@ def generate_virtual_receipt_html(data: PrintJobPayload) -> str:
     cgst_val = data.cgst if data.cgst > 0 else round(data.tax / 2.0, 2)
     sgst_val = data.sgst if data.sgst > 0 else round(data.tax / 2.0, 2)
 
+    gst_line = f" | GSTIN: {data.gstin}" if data.gstin else ""
     return f"""
-    <div style="max-width:100%; width:100%; box-sizing:border-box; font-family:'Courier New', monospace; background:#fff; color:#000; padding:10px; border:1px dashed #aaa; border-radius:4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin:0 auto;">
-        <div style="text-align:center;">
-            <h2 style="margin:0; font-size:18px; letter-spacing:1px;">{data.shop_name.upper()}</h2>
-            <div style="font-size:11px; margin-top:3px;">{data.shop_address}</div>
-            <div style="font-size:11px;">Ph: {data.shop_phone} | GSTIN: {data.gstin}</div>
+    <div style="max-width:100%; width:100%; box-sizing:border-box; font-family:'Courier New', monospace; background:#fff; color:#000; padding:16px; border:1px dashed #aaa; border-radius:4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin:0 auto;">
+        <div style="text-align:center; padding-bottom:4px;">
+            <h2 style="margin:0; font-size:18px; letter-spacing:1px; font-weight:800;">{data.shop_name.upper()}</h2>
+            <div style="font-size:11px; margin-top:6px; color:#333;">{data.shop_address}</div>
+            <div style="font-size:11px; font-weight:bold; margin-top:4px;">Ph: {data.shop_phone}{gst_line}</div>
         </div>
         
-        <div style="border-bottom:1px dashed #000; margin:8px 0;"></div>
+        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
         
-        <div style="font-size:11px; display:flex; justify-content:space-between;">
-            <span>Inv: <strong>{data.invoice_number}</strong></span>
+        <div style="font-size:11px; display:flex; justify-content:space-between; font-weight:bold; padding:2px 0;">
+            <span>INVOICE: #{data.invoice_number}</span>
             <span>{data.date}</span>
         </div>
-        <div style="font-size:11px; margin-top:2px;">
-            Customer: {data.customer_name} {f'({data.customer_phone})' if data.customer_phone else ''}
-        </div>
+        {f'<div style="font-size:11px; margin-top:4px;">Customer: {data.customer_name} ({data.customer_phone})</div>' if data.customer_phone else ''}
 
-        <div style="border-bottom:1px dashed #000; margin:8px 0;"></div>
+        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
 
-        <div>
+        <div style="padding:4px 0;">
             {items_html}
         </div>
 
-        <div style="border-bottom:1px dashed #000; margin:8px 0;"></div>
+        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
 
-        <div style="font-size:12px;">
+        <div style="font-size:12px; line-height:1.7;">
             <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹{data.subtotal:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between; color:#d9534f;"><span>Discount:</span><span>-₹{data.discount:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>CGST (2.5%):</span><span>₹{cgst_val:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>SGST (2.5%):</span><span>₹{sgst_val:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px; margin-top:4px; border-top:1px solid #000; padding-top:4px;">
+            {f'<div style="display:flex; justify-content:space-between; color:#d9534f; font-weight:600;"><span>Discount:</span><span>-₹{data.discount:.2f}</span></div>' if data.discount > 0 else '<div style="display:flex; justify-content:space-between; color:#d9534f; font-weight:600;"><span>Discount:</span><span>-₹0.00</span></div>'}
+            <div style="display:flex; justify-content:space-between;"><span>CGST:</span><span>₹{cgst_val:.2f}</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>SGST:</span><span>₹{sgst_val:.2f}</span></div>
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px; margin-top:8px; border-top:1px solid #000; padding-top:8px;">
                 <span>NET TOTAL:</span><span>₹{data.total:.2f}</span>
             </div>
         </div>
 
-        <div style="border-bottom:1px dashed #000; margin:8px 0;"></div>
-        {payments_html}
-        <div style="border-bottom:1px dashed #000; margin:8px 0;"></div>
-
-        <div style="text-align:center; font-size:10px; font-style:italic; margin-top:8px;">
-            {data.footer}
+        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
+        <div style="padding:2px 0;">
+            {payments_html}
         </div>
-        <div style="text-align:center; font-size:9px; font-weight:bold; margin-top:10px; background:#f0f0f0; padding:2px;">
-            [ ESC/POS AUTO-CUT COMMAND EXECUTED ]
+        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
+
+        <div style="text-align:center; font-size:10px; font-style:italic; margin-top:12px; padding-top:4px; color:#555; line-height:1.4;">
+            {data.footer}
         </div>
     </div>
     """
@@ -181,7 +179,8 @@ def print_receipt(data: PrintJobPayload):
                 p.set(align='center', bold=True, double_height=True)
                 p.text(f"{data.shop_name}\n")
                 p.set(align='center', bold=False, double_height=False)
-                p.text(f"{data.shop_address}\nGSTIN: {data.gstin}\n")
+                gstin_str = f" | GSTIN: {data.gstin}" if data.gstin else ""
+                p.text(f"{data.shop_address}\nPh: {data.shop_phone}{gst_str if 'gst_str' in locals() else gstin_str}\n")
                 p.text("--------------------------------\n")
                 p.text(f"Invoice: {data.invoice_number}\n")
                 p.text("--------------------------------\n")

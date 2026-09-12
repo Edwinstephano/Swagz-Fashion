@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, LogIn, Sparkles, ShieldCheck, KeyRound, ArrowRight, Printer, Scissors, Users, BarChart3, CheckCircle2, Sun, Moon } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, Sparkles, ShieldCheck, KeyRound, ArrowRight, Printer, ShoppingBag, Package, RefreshCw, BarChart3, CheckCircle2, Sun, Moon } from 'lucide-react';
 import swagLogo from '../assets/swag.png';
 import swagzzLogo from '../assets/swagzz.png';
 import swagzzWhiteLogo from '../assets/swagzz_white.png';
 import loginBg from '../assets/menswear_login_bg.png';
 
 export default function LoginView({ onLoginSuccess, theme, toggleTheme }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const isDark = theme === 'dark';
+  // Login Centered Breathing Logo Splash Animation State
+  const [isSuccessSplash, setIsSuccessSplash] = useState(false);
 
-  const demoCredentials = [
-    { label: 'Admin Director', role: 'ADMIN', user: 'admin', pass: 'admin123', icon: '👑', color: 'border-amber-500/40 bg-amber-500/10 text-amber-400' },
-    { label: 'Store Manager', role: 'MANAGER', user: 'manager', pass: 'manager123', icon: '🏬', color: 'border-blue-500/40 bg-blue-500/10 text-blue-400' },
-    { label: 'Cashier Staff', role: 'CASHIER', user: 'cashier', pass: 'cashier123', icon: '💳', color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' }
-  ];
+  const isDark = theme === 'dark';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,17 +35,19 @@ export default function LoginView({ onLoginSuccess, theme, toggleTheme }) {
 
       if (res.ok) {
         const data = await res.json();
+        const userObj = {
+          name: data.name,
+          username: data.username,
+          role: data.role
+        };
         localStorage.setItem('token', data.access_token);
-        localStorage.setItem('swagz_user', JSON.stringify({
-          name: data.name,
-          username: data.username,
-          role: data.role
-        }));
-        onLoginSuccess({
-          name: data.name,
-          username: data.username,
-          role: data.role
-        });
+        localStorage.setItem('swagz_user', JSON.stringify(userObj));
+        
+        setIsSuccessSplash(true);
+
+        setTimeout(() => {
+          onLoginSuccess(userObj);
+        }, 1000);
       } else {
         const err = await res.json();
         setErrorMessage(err.detail || 'Invalid username or password.');
@@ -60,17 +59,39 @@ export default function LoginView({ onLoginSuccess, theme, toggleTheme }) {
     }
   };
 
-  const handleQuickLogin = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMessage('');
-  };
-
   return (
     <div className={`min-h-screen w-full flex flex-col justify-center items-center font-sans relative overflow-hidden select-none transition-colors duration-300 ${
       isDark ? 'bg-[#0C0E12] text-slate-100' : 'bg-slate-100 text-slate-900'
     }`}>
       
+      {/* Minimalist Centered Breathing Logo Animation Overlay */}
+      {isSuccessSplash && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md select-none transition-all duration-300 animate-fade-in-up">
+          
+          {/* Centered Radial Gold Lighting Effect */}
+          <div className="absolute w-72 h-72 rounded-full bg-[#D49018]/25 blur-3xl animate-pulse pointer-events-none"></div>
+
+          <div className="relative z-10 flex flex-col items-center space-y-4">
+            
+            {/* Swagz Emblem with Centered Breathing Scale Pulse Animation (Big -> Small -> Big) */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-[#D49018]/40 animate-ping duration-1000"></div>
+              <div className="w-28 h-28 rounded-full bg-[#0C0E12]/90 p-3 border-2 border-[#D49018] shadow-2xl shadow-[#D49018]/40 animate-pulse flex items-center justify-center">
+                <img
+                  src={swagLogo}
+                  alt="Swagz Emblem"
+                  className="w-full h-full object-contain rounded-full animate-bounce"
+                />
+              </div>
+            </div>
+
+            {/* Swagz Brand Logo Text */}
+            <img src={swagzzWhiteLogo} alt="Swagz Fashion" className="h-9 object-contain animate-pulse" />
+
+          </div>
+        </div>
+      )}
+
       {/* Ambient Radial Lighting Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] ${
@@ -142,42 +163,42 @@ export default function LoginView({ onLoginSuccess, theme, toggleTheme }) {
                 Next-Gen Retail POS & Thermal Auto-Print Engine
               </h1>
               <p className="text-sm text-slate-300 leading-relaxed font-medium">
-                Streamlined point-of-sale counter operations, barcode SKU matrix, master tailoring alterations tracking, and automated thermal receipt dispatch.
+                Streamlined point-of-sale counter operations, barcode SKU matrix, garment returns processing, and automated thermal receipt dispatch.
               </p>
             </div>
 
-            {/* 4 Feature Badges Grid */}
+            {/* 4 Feature Badges Grid - Actual Available System Features */}
             <div className="grid grid-cols-2 gap-3.5 pt-2">
               <div className="p-3.5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md space-y-1 hover:border-[#D49018]/40 transition-all">
                 <div className="flex items-center space-x-2 text-[#D49018] font-bold text-xs">
-                  <Printer className="w-4 h-4" />
-                  <span>Port 9101 Auto-Print</span>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>POS Counter & Billing</span>
                 </div>
-                <p className="text-[11px] text-gray-400 leading-tight">58mm & 80mm thermal receipt dispatch</p>
+                <p className="text-[11px] text-gray-400 leading-tight">Barcode search, cart parking & split payments</p>
               </div>
 
               <div className="p-3.5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md space-y-1 hover:border-[#D49018]/40 transition-all">
                 <div className="flex items-center space-x-2 text-amber-400 font-bold text-xs">
-                  <Scissors className="w-4 h-4" />
-                  <span>Master Tailor Desk</span>
+                  <Package className="w-4 h-4" />
+                  <span>Product SKU Matrix</span>
                 </div>
-                <p className="text-[11px] text-gray-400 leading-tight">Trouser hem & fitting request tracking</p>
+                <p className="text-[11px] text-gray-400 leading-tight">Garment sizes, color variants & stock matrix</p>
               </div>
 
               <div className="p-3.5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md space-y-1 hover:border-[#D49018]/40 transition-all">
                 <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs">
-                  <Users className="w-4 h-4" />
-                  <span>VIP Loyalty Club</span>
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Returns & Exchanges</span>
                 </div>
-                <p className="text-[11px] text-gray-400 leading-tight">Client points matrix & tier rewards</p>
+                <p className="text-[11px] text-gray-400 leading-tight">Invoice garment returns & auto restock</p>
               </div>
 
               <div className="p-3.5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md space-y-1 hover:border-[#D49018]/40 transition-all">
-                <div className="flex items-center space-x-2 text-purple-400 font-bold text-xs">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Executive Analytics</span>
+                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs">
+                  <Printer className="w-4 h-4" />
+                  <span>Port 9101 Auto-Print</span>
                 </div>
-                <p className="text-[11px] text-gray-400 leading-tight">Real-time revenue command & CSV reports</p>
+                <p className="text-[11px] text-gray-400 leading-tight">58mm & 80mm ESC/POS thermal dispatch</p>
               </div>
             </div>
           </div>
@@ -334,57 +355,6 @@ export default function LoginView({ onLoginSuccess, theme, toggleTheme }) {
               </button>
 
             </form>
-
-            {/* Quick Demo Credentials Cards (1-Click Auto Fill) */}
-            <div className={`pt-6 border-t space-y-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-              <div className={`flex items-center justify-between text-xs font-mono font-bold ${
-                isDark ? 'text-gray-400' : 'text-slate-500'
-              }`}>
-                <span>⚡ DEMO ROLE PRESETS</span>
-                <span className="text-[10px] text-[#D49018]">1-CLICK AUTO FILL</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                {demoCredentials.map((c) => {
-                  const isSelected = username === c.user;
-                  return (
-                    <button
-                      type="button"
-                      key={c.user}
-                      onClick={() => handleQuickLogin(c.user, c.pass)}
-                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between space-y-1 transition-all btn-interactive cursor-pointer ${
-                        isSelected
-                          ? isDark
-                            ? 'bg-[#D49018]/20 border-[#D49018] shadow-lg shadow-[#D49018]/10'
-                            : 'bg-amber-50/90 border-[#D49018] shadow-md shadow-amber-500/10 ring-2 ring-[#D49018]/20'
-                          : isDark
-                          ? 'bg-[#16181E] border-white/10 hover:border-white/30 text-slate-300'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-base">{c.icon}</span>
-                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#D49018]" />}
-                      </div>
-                      <div>
-                        <span className={`text-[11px] font-bold block leading-snug ${
-                          isSelected
-                            ? (isDark ? 'text-white' : 'text-slate-900')
-                            : (isDark ? 'text-slate-300' : 'text-slate-700')
-                        }`}>
-                          {c.label}
-                        </span>
-                        <span className={`text-[9px] font-mono block mt-0.5 uppercase ${
-                          isDark ? 'text-gray-400' : 'text-slate-500'
-                        }`}>
-                          {c.user}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Restricted Access Note */}
             <p className={`text-[11px] text-center font-mono ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>

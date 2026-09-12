@@ -45,6 +45,7 @@ export default function ReportsView({ theme }) {
 
   // Drill-Down Modal State
   const [activeModal, setActiveModal] = useState(null); // { type: 'category' | 'product' | 'day' | 'cashier', data: any }
+  const [toastMessage, setToastMessage] = useState(null);
 
   useEffect(() => {
     fetchReportData();
@@ -160,6 +161,9 @@ export default function ReportsView({ theme }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    setToastMessage("📊 Full Executive Report exported to CSV / Excel spreadsheet successfully!");
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   const handlePrintReport = () => {
@@ -182,7 +186,7 @@ export default function ReportsView({ theme }) {
               <h1 className={`font-heading text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Reports & Analytics
               </h1>
-              <p className="text-xs text-gray-400 font-medium">
+              <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
                 Monitor sales, revenue, profit, products, inventory, customers, and store performance.
               </p>
             </div>
@@ -265,18 +269,23 @@ export default function ReportsView({ theme }) {
           <div className="flex items-center space-x-2">
             <button
               onClick={handleExportCSV}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs shadow-xs hover:bg-amber-400 transition-all cursor-pointer"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-950/40' 
+                  : 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-emerald-200'
+              }`}
+              title="Export Report Data to CSV / Excel Spreadsheet"
             >
-              <Download className="w-4 h-4" />
-              <span>Export CSV</span>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export to Excel / CSV</span>
             </button>
             
             <button
               onClick={handlePrintReport}
               className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                isDark ? 'bg-[#101217] border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+                isDark ? 'bg-[#101217] border-slate-800 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
               }`}
-              title="Print Report"
+              title="Print Executive Report"
             >
               <Printer className="w-4 h-4 text-amber-500" />
             </button>
@@ -284,6 +293,16 @@ export default function ReportsView({ theme }) {
 
         </div>
       </div>
+
+      {/* Toast Notification for Export */}
+      {toastMessage && (
+        <div className={`p-3.5 rounded-xl text-xs font-mono font-bold border flex items-center space-x-2 transition-all animate-fade-in ${
+          isDark ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
+        }`}>
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Global Filter Toolbar */}
       <div className={`p-4 rounded-xl border flex flex-wrap items-center gap-4 text-xs ${

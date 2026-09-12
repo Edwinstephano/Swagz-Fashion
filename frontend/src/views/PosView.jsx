@@ -100,7 +100,10 @@ export default function PosView({ currentUser, theme }) {
       prev.map(item => {
         if (item.variant.id === variantId) {
           const newQty = item.qty + delta;
-          return newQty > 0 ? { ...item, qty: newQty } : null;
+          if (newQty <= 0) return null;
+          const maxAllowedDisc = item.unitPrice * newQty;
+          const clampedDisc = Math.min(item.discount || 0, maxAllowedDisc);
+          return { ...item, qty: newQty, discount: clampedDisc };
         }
         return item;
       }).filter(Boolean)
@@ -112,11 +115,16 @@ export default function PosView({ currentUser, theme }) {
   };
 
   const updateItemDiscount = (variantId, discountVal) => {
-    const val = Math.max(0, parseFloat(discountVal) || 0);
+    const rawVal = Math.max(0, parseFloat(discountVal) || 0);
     setCart((prev) =>
-      prev.map(item =>
-        item.variant.id === variantId ? { ...item, discount: val } : item
-      )
+      prev.map(item => {
+        if (item.variant.id === variantId) {
+          const lineSubtotal = item.unitPrice * item.qty;
+          const safeVal = Math.min(rawVal, lineSubtotal);
+          return { ...item, discount: safeVal };
+        }
+        return item;
+      })
     );
   };
 
@@ -125,12 +133,21 @@ export default function PosView({ currentUser, theme }) {
   // Calculations
   const totalItemCount = cart.reduce((sum, i) => sum + i.qty, 0);
   const grossSubtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
-  const itemDiscountTotal = cart.reduce((sum, item) => sum + (item.discount || 0), 0);
-  const totalDiscount = itemDiscountTotal + (discountAmount || 0);
+  
+  // Safe item discounts capped at each line's subtotal
+  const itemDiscountTotal = cart.reduce((sum, item) => {
+    const lineSubtotal = item.unitPrice * item.qty;
+    return sum + Math.min(item.discount || 0, lineSubtotal);
+  }, 0);
+
+  const remainingSubtotalForCartDiscount = Math.max(0, grossSubtotal - itemDiscountTotal);
+  const isDiscountExceeded = (discountAmount || 0) > remainingSubtotalForCartDiscount;
+  const effectiveCartDiscount = Math.min(Math.max(0, discountAmount || 0), remainingSubtotalForCartDiscount);
+  const totalDiscount = itemDiscountTotal + effectiveCartDiscount;
   
   const tax = cart.reduce((sum, item) => {
     const lineSubtotal = item.unitPrice * item.qty;
-    const lineDisc = item.discount || 0;
+    const lineDisc = Math.min(item.discount || 0, lineSubtotal);
     const afterDisc = Math.max(0, lineSubtotal - lineDisc);
     const taxPct = item.product?.tax_percent ?? 5.0;
     return sum + (afterDisc * (taxPct / 100));
@@ -213,8 +230,10 @@ export default function PosView({ currentUser, theme }) {
 
         {/* Search Bar */}
         <form onSubmit={handleSearchSubmit} className="flex items-center">
-          <div className="relative flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center">
-            <div className="pl-3.5 pr-2 text-slate-400">
+          <div className={`relative flex-1 rounded-2xl border shadow-xs flex items-center transition-colors ${
+            isDark ? 'bg-[#181B20] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`pl-3.5 pr-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               <Search className="w-4 h-4" />
             </div>
             <input
@@ -222,10 +241,14 @@ export default function PosView({ currentUser, theme }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products by title, style code, SKU, or scan barcode directly (F3)..."
-              className="w-full py-2.5 pr-10 text-xs font-semibold text-slate-900 placeholder-slate-400 bg-transparent focus:outline-none"
+              className={`w-full py-2.5 pr-10 text-xs font-semibold bg-transparent focus:outline-none ${
+                isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+              }`}
             />
             {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
+              <button type="button" onClick={() => setSearchQuery('')} className={`absolute right-3 ${
+                isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+              }`}>
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -241,9 +264,11 @@ export default function PosView({ currentUser, theme }) {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 font-bold text-xs rounded-xl whitespace-nowrap shrink-0 transition-all shadow-2xs ${
+                className={`px-4 py-2 font-bold text-xs rounded-xl whitespace-nowrap shrink-0 transition-all shadow-2xs cursor-pointer ${
                   isActive
                     ? 'bg-[#D49018] text-white shadow-xs'
+                    : isDark
+                    ? 'bg-[#181B20] border border-slate-800 text-slate-300 hover:bg-slate-800'
                     : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
@@ -257,7 +282,7 @@ export default function PosView({ currentUser, theme }) {
         {/* Product Inventory Grid (3 Columns) */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {products.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-slate-400 font-medium">
+            <div className={`col-span-full py-16 text-center font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               No products found matching "{searchQuery || selectedCategory}".
             </div>
           ) : (
@@ -268,10 +293,12 @@ export default function PosView({ currentUser, theme }) {
                   setSelectedProductForVariant(p);
                   setIsVariantModalOpen(true);
                 }}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card flex flex-col justify-between cursor-pointer group hover:border-slate-800 transition-all duration-200 card-interactive animate-scale-in"
+                className={`rounded-2xl border overflow-hidden shadow-card flex flex-col justify-between cursor-pointer group transition-all duration-200 card-interactive animate-scale-in ${
+                  isDark ? 'bg-[#181B20] border-slate-800 hover:border-[#D49018]' : 'bg-white border-slate-200 hover:border-slate-800'
+                }`}
               >
                 <div>
-                  <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
+                  <div className={`relative w-full aspect-[4/3] overflow-hidden ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
                     <img
                       src={p.image_url || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&q=80'}
                       alt={p.name}
@@ -289,10 +316,10 @@ export default function PosView({ currentUser, theme }) {
                   </div>
 
                   <div className="p-3.5 pb-1">
-                    <h2 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug">
+                    <h2 className={`text-xs font-bold line-clamp-1 leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {p.name}
                     </h2>
-                    <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                    <p className={`text-[11px] mt-0.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {p.category} • {p.variants?.length || 0} variants available
                     </p>
                   </div>
@@ -302,7 +329,7 @@ export default function PosView({ currentUser, theme }) {
                   <div className="flex items-end justify-between">
                     <div>
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">MRP</span>
-                      <span className="text-base font-extrabold text-slate-900 tracking-tight font-mono">
+                      <span className={`text-base font-extrabold tracking-tight font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         ₹{p.base_price.toFixed(2)}
                       </span>
                     </div>
@@ -310,7 +337,11 @@ export default function PosView({ currentUser, theme }) {
                     {/* Cream / Light Orange Select Size Button matching reference screenshot */}
                     <button
                       type="button"
-                      className="bg-[#FEF3C7] hover:bg-[#fde68a] border border-[#FCD34D] text-[#D97706] font-bold text-xs px-3 py-1.5 rounded-xl flex items-center space-x-1 shadow-2xs transition-colors"
+                      className={`font-bold text-xs px-3 py-1.5 rounded-xl flex items-center space-x-1 shadow-2xs transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[#FEF3C7]/20 border border-[#FCD34D]/40 text-[#FCD34D] hover:bg-[#FEF3C7]/30'
+                          : 'bg-[#FEF3C7] border border-[#FCD34D] text-[#D97706] hover:bg-[#fde68a]'
+                      }`}
                     >
                       <span>Select Size</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -325,15 +356,17 @@ export default function PosView({ currentUser, theme }) {
       </div>
 
       {/* Right Column: Current Ticket Panel */}
-      <aside className="w-full lg:w-[540px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col justify-between shadow-xs pb-8">
+      <aside className={`w-full lg:w-[540px] border-t lg:border-t-0 lg:border-l flex flex-col justify-between shadow-xs pb-8 transition-colors ${
+        isDark ? 'bg-[#181B20] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+      }`}>
 
         {/* Ticket Header & Customer Profile */}
-        <div className="p-4 border-b border-slate-200 space-y-3">
+        <div className={`p-4 border-b space-y-3 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center space-x-2">
                 <ShoppingCart className="w-5 h-5 text-[#D49018]" />
-                <h3 className="font-extrabold text-lg text-slate-900 tracking-tight">Current Ticket</h3>
+                <h3 className={`font-extrabold text-lg tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Current Ticket</h3>
                 <span className="bg-[#FEF3C7] text-[#D97706] border border-[#FCD34D] text-xs font-black px-2.5 py-0.5 rounded-full">
                   {totalItemCount} items
                 </span>
@@ -344,13 +377,13 @@ export default function PosView({ currentUser, theme }) {
             </div>
 
             <div className="flex items-center space-x-1">
-              <button onClick={() => setCart([])} title="Clear Cart" className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100">
+              <button onClick={() => setCart([])} title="Clear Cart" className={`p-1.5 text-slate-400 hover:text-red-500 rounded-lg ${
+                isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'
+              }`}>
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
-
-
         </div>
 
         {/* Cart Itemized List */}
@@ -371,41 +404,47 @@ export default function PosView({ currentUser, theme }) {
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.variant.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div key={item.variant.id} className={`p-3 rounded-xl border space-y-2 ${
+                isDark ? 'bg-[#14161A] border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div className="flex items-start space-x-3">
                   <img
                     src={item.product.image_url || 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=100&q=80'}
                     alt={item.product.name}
-                    className="w-11 h-11 object-cover rounded-lg border border-slate-200 shrink-0"
+                    className={`w-11 h-11 object-cover rounded-lg border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
-                      <h5 className="text-xs font-bold text-slate-900 truncate leading-snug pr-1">
+                      <h5 className={`text-xs font-bold truncate leading-snug pr-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         {item.product.name}
                       </h5>
-                      <span className="text-xs font-bold font-mono text-slate-900 shrink-0">
+                      <span className={`text-xs font-bold font-mono shrink-0 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         ₹{(item.unitPrice * item.qty).toFixed(2)}
                       </span>
                     </div>
-                    <p className="text-[11px] font-mono text-slate-500 mt-0.5">
-                      Size: <span className="font-bold text-slate-800">{item.variant.size}</span> | SKU: <span className="font-semibold">{item.variant.sku_barcode}</span>
+                    <p className={`text-[11px] font-mono mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Size: <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.variant.size}</span> | SKU: <span className="font-semibold">{item.variant.sku_barcode}</span>
                     </p>
 
                     {/* Quantity & Item Discount Row */}
                     <div className="flex items-center justify-between pt-1.5 gap-2">
                       <div className="flex items-center space-x-2">
-                        <div className="flex items-center space-x-1.5 bg-white border border-slate-300 rounded-md px-1.5 py-0.5">
-                          <button onClick={() => updateQty(item.variant.id, -1)} className="text-slate-500 hover:text-slate-900 font-bold">
+                        <div className={`flex items-center space-x-1.5 border rounded-md px-1.5 py-0.5 ${
+                          isDark ? 'bg-[#1F2229] border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                        }`}>
+                          <button onClick={() => updateQty(item.variant.id, -1)} className="text-slate-400 hover:text-white font-bold cursor-pointer">
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="font-mono font-bold text-xs px-1">{item.qty}</span>
-                          <button onClick={() => updateQty(item.variant.id, 1)} className="text-slate-500 hover:text-slate-900 font-bold">
+                          <button onClick={() => updateQty(item.variant.id, 1)} className="text-slate-400 hover:text-white font-bold cursor-pointer">
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
 
                         {/* Item Discount Column Input */}
-                        <div className="flex items-center space-x-1 bg-white border border-slate-300 rounded-md px-1.5 py-0.5">
+                        <div className={`flex items-center space-x-1 border rounded-md px-1.5 py-0.5 ${
+                          isDark ? 'bg-[#1F2229] border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                        }`}>
                           <span className="text-[10px] text-slate-400 font-bold uppercase">Disc ₹</span>
                           <input
                             type="number"
@@ -413,12 +452,14 @@ export default function PosView({ currentUser, theme }) {
                             value={item.discount || ''}
                             onChange={(e) => updateItemDiscount(item.variant.id, e.target.value)}
                             placeholder="0"
-                            className="w-10 text-xs font-mono font-bold text-slate-800 bg-transparent outline-none text-right"
+                            className={`w-10 text-xs font-mono font-bold bg-transparent outline-none text-right ${
+                              isDark ? 'text-white' : 'text-slate-800'
+                            }`}
                           />
                         </div>
                       </div>
 
-                      <button onClick={() => removeCartItem(item.variant.id)} className="text-slate-400 hover:text-red-500 p-0.5">
+                      <button onClick={() => removeCartItem(item.variant.id)} className="text-slate-400 hover:text-red-500 p-0.5 cursor-pointer">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -430,50 +471,78 @@ export default function PosView({ currentUser, theme }) {
         </div>
 
         {/* Financial Summary & NET TOTAL */}
-        <div className="p-3 border-t border-slate-200 space-y-1.5 bg-white text-xs">
-          <div className="flex justify-between items-center text-slate-600 font-semibold">
+        <div className={`p-3 border-t space-y-1.5 text-xs ${
+          isDark ? 'bg-[#181B20] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-600'
+        }`}>
+          <div className="flex justify-between items-center font-semibold">
             <span>Subtotal ({totalItemCount} items)</span>
-            <span className="font-mono font-bold text-slate-900">₹{grossSubtotal.toFixed(2)}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>₹{grossSubtotal.toFixed(2)}</span>
           </div>
 
           {/* Bill Discount Column Row */}
-          <div className="flex justify-between items-center text-slate-700 font-semibold pt-0.5">
-            <span className="text-emerald-700 font-bold flex items-center gap-1">
-              Discount (₹)
-            </span>
-            <div className="flex items-center gap-1.5">
-              {totalDiscount > 0 && (
-                <span className="text-xs font-mono font-bold text-emerald-600">-₹{totalDiscount.toFixed(2)}</span>
-              )}
-              <input
-                type="number"
-                min="0"
-                value={discountAmount || ''}
-                onChange={(e) => setDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                placeholder="0.00"
-                className="w-20 px-2 py-0.5 text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 rounded-md text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
+          <div className="flex flex-col pt-0.5 space-y-1">
+            <div className="flex justify-between items-center font-semibold">
+              <span className={`font-bold flex items-center gap-1 ${isDiscountExceeded ? 'text-rose-500' : 'text-emerald-500'}`}>
+                Discount (₹)
+              </span>
+              <div className="flex items-center gap-1.5">
+                {totalDiscount > 0 && (
+                  <span className={`text-xs font-mono font-bold ${isDiscountExceeded ? 'text-rose-400 line-through' : 'text-emerald-400'}`}>
+                    -₹{totalDiscount.toFixed(2)}
+                  </span>
+                )}
+                <input
+                  type="number"
+                  min="0"
+                  max={remainingSubtotalForCartDiscount}
+                  value={discountAmount || ''}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setDiscountAmount(isNaN(val) ? 0 : Math.max(0, val));
+                  }}
+                  onBlur={() => {
+                    if (isDiscountExceeded) {
+                      setDiscountAmount(remainingSubtotalForCartDiscount);
+                    }
+                  }}
+                  placeholder="0.00"
+                  className={`w-24 px-2 py-0.5 text-xs font-mono font-bold rounded-md text-right focus:outline-none transition-all ${
+                    isDiscountExceeded
+                      ? 'bg-rose-950/80 border-2 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
+                      : isDark
+                        ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 focus:ring-1 focus:ring-emerald-400'
+                        : 'bg-emerald-50 border border-emerald-300 text-emerald-700 focus:ring-1 focus:ring-emerald-500'
+                  }`}
+                />
+              </div>
             </div>
+
+            {isDiscountExceeded && (
+              <div className="text-[10px] font-bold text-rose-500 text-right flex items-center justify-end gap-1 animate-pulse">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>Discount cannot exceed Subtotal (Max: ₹{remainingSubtotalForCartDiscount.toFixed(2)})</span>
+              </div>
+            )}
           </div>
 
-          {/* Subtotal After Discount (Only shown when a discount is applied) */}
+          {/* Subtotal After Discount */}
           {totalDiscount > 0 && (
-            <div className="flex justify-between items-center text-slate-600 font-semibold">
-              <span className="text-slate-700 font-medium">After Discount Subtotal</span>
-              <span className="font-mono font-bold text-slate-900">₹{subtotalAfterDiscount.toFixed(2)}</span>
+            <div className="flex justify-between items-center font-semibold">
+              <span className="font-medium">After Discount Subtotal</span>
+              <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>₹{subtotalAfterDiscount.toFixed(2)}</span>
             </div>
           )}
 
           {/* GST Tax */}
-          <div className="flex justify-between items-center text-slate-600 font-semibold">
+          <div className="flex justify-between items-center font-semibold">
             <span className="flex items-center gap-1">GST Tax <span className="text-[10px] text-slate-400">ℹ</span></span>
-            <span className="font-mono font-bold text-slate-900">₹{tax.toFixed(2)}</span>
+            <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>₹{tax.toFixed(2)}</span>
           </div>
 
-          <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+          <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
             <div>
-              <span className="font-extrabold text-slate-900 text-sm block leading-none">NET TOTAL</span>
-              <span className="text-[10px] text-slate-500 font-medium block mt-0.5">Inclusive of all local taxes</span>
+              <span className={`font-extrabold text-sm block leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>NET TOTAL</span>
+              <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Inclusive of all local taxes</span>
             </div>
             <span className="text-xl font-black text-[#D49018] font-mono tracking-tight">
               ₹{total.toFixed(2)}
@@ -482,12 +551,19 @@ export default function PosView({ currentUser, theme }) {
         </div>
 
         {/* Primary CHARGE ORDER Action Button */}
-        <div className="p-3 bg-white border-t border-slate-200 space-y-2">
+        <div className={`p-3 border-t space-y-2 ${isDark ? 'bg-[#181B20] border-slate-800' : 'bg-white border-slate-200'}`}>
           <button
             type="button"
-            onClick={() => cart.length > 0 && setIsPaymentModalOpen(true)}
+            onClick={() => {
+              if (cart.length === 0) return;
+              if (isDiscountExceeded) {
+                alert(`Discount of ₹${discountAmount} exceeds subtotal. Discount has been auto-adjusted to maximum allowed: ₹${remainingSubtotalForCartDiscount.toFixed(2)}`);
+                setDiscountAmount(remainingSubtotalForCartDiscount);
+              }
+              setIsPaymentModalOpen(true);
+            }}
             disabled={cart.length === 0}
-            className="w-full bg-[#D49018] hover:bg-[#c28113] active:scale-[0.99] text-white font-extrabold shadow-sm rounded-xl p-2.5 flex items-center justify-between text-sm transition-all disabled:opacity-40"
+            className="w-full bg-[#D49018] hover:bg-[#c28113] active:scale-[0.99] text-white font-extrabold shadow-sm rounded-xl p-2.5 flex items-center justify-between text-sm transition-all disabled:opacity-40 cursor-pointer"
           >
             <span className="font-extrabold uppercase tracking-wide">CHARGE ORDER</span>
             <span className="font-black font-mono text-base">₹{total.toFixed(2)}</span>
@@ -528,7 +604,7 @@ export default function PosView({ currentUser, theme }) {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        cartTotals={{ subtotal, tax, discountAmount, total }}
+        cartTotals={{ subtotal, tax, discountAmount: effectiveCartDiscount, total }}
         customer={customer}
         onConfirmPayment={handleConfirmCheckout}
         theme={theme}

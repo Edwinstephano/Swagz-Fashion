@@ -64,15 +64,24 @@ Open your browser at **`http://localhost:3005`** to start using the system!
 
 ---
 
-## 🔑 Pre-Configured Login Credentials
+## 🔒 Staff Authentication & Roles
 
-Use these credentials or click the **User Profile Pill** in the top right of the navbar to switch roles:
+Staff members must sign in using their registered account credentials:
 
-| Role | Username | Password | Access Level |
-|---|---|---|---|
-| 👑 **Admin Director** | `admin` | `admin123` | Full Access (Products, Uploads, Reports, Printers, Settings) |
-| 🏬 **Store Manager** | `manager` | `manager123` | Products, Stock Adjustments, Reports & Billing |
-| 💳 **Cashier Staff** | `cashier` | `cashier123` | POS Billing Counter, Parked Carts, Alterations, Returns |
+- 👑 **Admin Director**: Full Access (Products, Uploads, Reports, Printers, Settings)
+- 🏬 **Store Manager**: Access to POS Billing, Products, Returns & Reports
+- 💳 **Cashier Staff**: Access to POS Billing Counter, Parked Carts, Alterations & Returns
+
+### ➕ Creating Users Manually
+
+You can create new staff accounts directly using the CLI tool:
+
+```bash
+# Example: Create a new Store Manager account
+./backend/venv/bin/python backend/create_user.py --name "Jane Doe" --username jane --password "securepassword" --role manager
+```
+
+Roles available: `admin`, `manager`, `cashier`.
 
 ---
 

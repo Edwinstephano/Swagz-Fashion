@@ -2,11 +2,34 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engine, Base
+from .database import engine, Base, SessionLocal
+from .models import User, UserRole
+from .auth import get_password_hash
 from .routers import auth, products, customers, bills, returns, alterations, reports, printers, settings, shifts, audit
 
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
+
+def ensure_default_admin():
+    try:
+        db = SessionLocal()
+        admin_user = db.query(User).filter(User.username == "admin").first()
+        if not admin_user:
+            print("👑 Automatically creating default admin user (admin / admin@123)...")
+            admin_user = User(
+                name="Admin Director",
+                username="admin",
+                password_hash=get_password_hash("admin@123"),
+                role=UserRole.ADMIN.value
+            )
+            db.add(admin_user)
+            db.commit()
+    except Exception as e:
+        print(f"Error checking default admin: {e}")
+    finally:
+        db.close()
+
+ensure_default_admin()
 
 app = FastAPI(
     title="Swagz Fashion — POS & Billing API",

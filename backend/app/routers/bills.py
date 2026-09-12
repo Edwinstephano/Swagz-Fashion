@@ -191,6 +191,11 @@ def create_bill(
             })
 
         overall_discount = round(total_item_disc + req.discount_amount, 2)
+        if overall_discount > round(subtotal, 2) + 0.01:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Total discount (₹{overall_discount:.2f}) cannot exceed subtotal (₹{subtotal:.2f})"
+            )
         total_amount = round(max(0.0, subtotal - overall_discount + total_tax), 2)
         cgst = round(total_tax / 2.0, 2)
         sgst = round(total_tax / 2.0, 2)

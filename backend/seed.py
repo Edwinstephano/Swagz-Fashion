@@ -17,7 +17,7 @@ def seed():
         # 1. Users
         if db.query(User).count() == 0:
             print("Seeding Users...")
-            admin = User(name="Admin Director", username="admin", password_hash=get_password_hash("admin123"), role=UserRole.ADMIN.value)
+            admin = User(name="Admin Director", username="admin", password_hash=get_password_hash("admin@123"), role=UserRole.ADMIN.value)
             manager = User(name="Store Manager", username="manager", password_hash=get_password_hash("manager123"), role=UserRole.MANAGER.value)
             cashier = User(name="Cashier Staff", username="cashier", password_hash=get_password_hash("cashier123"), role=UserRole.CASHIER.value)
             db.add_all([admin, manager, cashier])

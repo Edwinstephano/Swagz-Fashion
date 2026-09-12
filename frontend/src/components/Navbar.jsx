@@ -101,7 +101,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
             <span>⚡ 9101 READY</span>
           </div>
 
-          {/* Cashier / Staff Profile & Role Switcher Badge */}
+          {/* Cashier / Staff Profile Badge */}
           <button
             onClick={onOpenRoleModal}
             className={`flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border text-xs transition-all cursor-pointer ${
@@ -109,14 +109,14 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
                 ? 'border-slate-700 bg-[#1F2229] hover:bg-slate-800 text-slate-200'
                 : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
             }`}
-            title="Click to Switch Role or Logout"
+            title="Click to View Staff Profile or Logout"
           >
             <div className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] font-bold text-xs flex items-center justify-center uppercase">
-              {currentUser?.name?.charAt(0) || 'A'}
+              {currentUser?.name?.charAt(0) || 'S'}
             </div>
             <div className="text-left leading-none">
               <span className={`font-bold block text-[11px] ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                {currentUser?.name || 'Admin Director'}
+                {currentUser?.name || 'Staff User'}
               </span>
               <span className="text-[9px] uppercase font-mono font-bold block mt-0.5 text-[#D49018]">
                 {currentUser?.role || 'cashier'}

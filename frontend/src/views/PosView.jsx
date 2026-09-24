@@ -145,12 +145,20 @@ export default function PosView({ currentUser, theme }) {
   const effectiveCartDiscount = Math.min(Math.max(0, discountAmount || 0), remainingSubtotalForCartDiscount);
   const totalDiscount = itemDiscountTotal + effectiveCartDiscount;
   
+  const totalAfterItemDisc = cart.reduce((sum, item) => {
+    const lineSubtotal = item.unitPrice * item.qty;
+    const lineDisc = Math.min(item.discount || 0, lineSubtotal);
+    return sum + Math.max(0, lineSubtotal - lineDisc);
+  }, 0);
+
   const tax = cart.reduce((sum, item) => {
     const lineSubtotal = item.unitPrice * item.qty;
     const lineDisc = Math.min(item.discount || 0, lineSubtotal);
-    const afterDisc = Math.max(0, lineSubtotal - lineDisc);
+    const afterItemDisc = Math.max(0, lineSubtotal - lineDisc);
+    const propCartDisc = totalAfterItemDisc > 0 ? (afterItemDisc / totalAfterItemDisc) * effectiveCartDiscount : 0;
+    const effectiveTaxable = Math.max(0, afterItemDisc - propCartDisc);
     const taxPct = item.product?.tax_percent ?? 5.0;
-    return sum + (afterDisc * (taxPct / 100));
+    return sum + (effectiveTaxable * (taxPct / 100));
   }, 0);
 
   const subtotalAfterDiscount = Math.max(0, grossSubtotal - totalDiscount);

@@ -164,7 +164,7 @@ def print_receipt(data: PrintJobPayload):
     html = generate_virtual_receipt_html(data)
     
     last_printed_receipt["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
-    last_printed_receipt["payload"] = data.dict()
+    last_printed_receipt["payload"] = data.model_dump() if hasattr(data, "model_dump") else data.dict()
     last_printed_receipt["virtual_rendered_html"] = html
 
     hardware_status = "simulated"

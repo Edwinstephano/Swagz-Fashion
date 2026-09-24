@@ -24,7 +24,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenRol
   const navItems = [
     { id: 'pos', label: 'POS Billing', icon: ShoppingBag, roles: ['admin', 'manager', 'cashier'] },
     { id: 'products', label: 'Products', icon: Package, roles: ['admin', 'manager'] },
-    { id: 'returns', label: 'Returns', icon: RefreshCw, roles: ['admin', 'manager', 'cashier'] },
+    { id: 'returns', label: 'Receipts', icon: RefreshCw, roles: ['admin', 'manager', 'cashier'] },
     { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'manager'] },
     { id: 'printers', label: 'Settings', icon: Printer, roles: ['admin'] },
   ];

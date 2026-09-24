@@ -17,7 +17,7 @@ export default function ReturnsView({ theme }) {
       const res = await fetch('/api/bills');
       if (res.ok) {
         const bills = await res.json();
-        setRecentBills(bills.slice(0, 8));
+        setRecentBills(bills.slice(0, 16));
       }
     } catch (e) {
       console.error("Error fetching recent bills", e);
@@ -101,14 +101,14 @@ export default function ReturnsView({ theme }) {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-[1550px] mx-auto space-y-6">
       {/* Header Banner */}
       <div className={`p-5 rounded-2xl border ${isDark ? 'bg-[#1F2229] border-[#2A2E39]' : 'bg-white border-slate-200 shadow-xs'}`}>
         <h2 className={`font-heading text-2xl font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           <RefreshCw className="w-6 h-6 text-[#C9A24B]" />
-          <span>Returns & Size Exchange Desk</span>
+          <span>Receipts & Returns Desk</span>
         </h2>
-        <p className="text-xs text-gray-400 font-mono mt-1">Process customer garment returns, restock inventory automatically, or perform size swaps</p>
+        <p className="text-xs text-gray-400 font-mono mt-1">Browse past created customer receipts, lookup invoices, process garment returns, and restock inventory</p>
       </div>
 
       {/* Invoice Lookup Input */}
@@ -212,7 +212,7 @@ export default function ReturnsView({ theme }) {
         ) : recentBills.length === 0 ? (
           <div className="text-center py-6 text-xs text-gray-400 font-mono">No invoices created yet. Create a bill from POS Billing to see it here.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {recentBills.map(bill => {
               const isSelected = searchedBill?.id === bill.id;
               return (

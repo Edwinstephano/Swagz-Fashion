@@ -149,17 +149,14 @@ def create_bill(
         invoice_no = generate_invoice_number(db)
 
         # Compute calculations
-        subtotal = 0.0
-        total_item_disc = 0.0
-        total_tax = 0.0
+        line_items_data = []
+        total_after_item_disc = 0.0
 
-        bill_items_to_create = []
         for item in req.items:
             variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
             if not variant:
                 raise HTTPException(status_code=404, detail=f"Variant ID {item.variant_id} not found")
 
-            # Check stock
             if req.status == BillStatus.CONFIRMED.value and variant.stock_qty < item.qty:
                 product = db.query(Product).filter(Product.id == variant.product_id).first()
                 raise HTTPException(
@@ -168,37 +165,58 @@ def create_bill(
                 )
 
             line_subtotal = item.unit_price * item.qty
-            line_disc = item.discount
-            after_disc = max(0.0, line_subtotal - line_disc)
-            
+            line_disc = min(item.discount, line_subtotal)
+            after_item_disc = max(0.0, line_subtotal - line_disc)
+            total_after_item_disc += after_item_disc
+
             product = db.query(Product).filter(Product.id == variant.product_id).first()
             tax_pct = product.tax_percent if product else 5.0
-            line_tax = round(after_disc * (tax_pct / 100.0), 2)
-            line_total = round(after_disc + line_tax, 2)
 
-            subtotal += line_subtotal
-            total_item_disc += line_disc
-            total_tax += line_tax
-
-            bill_items_to_create.append({
-                "variant_id": variant.id,
-                "qty": item.qty,
-                "unit_price": item.unit_price,
-                "discount": line_disc,
-                "tax": line_tax,
-                "line_total": line_total,
-                "variant_obj": variant
+            line_items_data.append({
+                "variant": variant,
+                "item": item,
+                "line_subtotal": line_subtotal,
+                "line_disc": line_disc,
+                "after_item_disc": after_item_disc,
+                "tax_pct": tax_pct
             })
 
-        overall_discount = round(total_item_disc + req.discount_amount, 2)
+        subtotal = sum(d["line_subtotal"] for d in line_items_data)
+        total_item_disc = sum(d["line_disc"] for d in line_items_data)
+
+        remaining_subtotal = max(0.0, subtotal - total_item_disc)
+        cart_disc = min(max(0.0, req.discount_amount), remaining_subtotal)
+        overall_discount = round(total_item_disc + cart_disc, 2)
+
         if overall_discount > round(subtotal, 2) + 0.01:
             raise HTTPException(
                 status_code=400,
                 detail=f"Total discount (₹{overall_discount:.2f}) cannot exceed subtotal (₹{subtotal:.2f})"
             )
+
+        total_tax = 0.0
+        bill_items_to_create = []
+        for d in line_items_data:
+            prop_cart_disc = (d["after_item_disc"] / total_after_item_disc * cart_disc) if total_after_item_disc > 0 else 0.0
+            effective_taxable = max(0.0, d["after_item_disc"] - prop_cart_disc)
+            line_tax = round(effective_taxable * (d["tax_pct"] / 100.0), 2)
+            line_total = round(effective_taxable + line_tax, 2)
+            total_tax += line_tax
+
+            bill_items_to_create.append({
+                "variant_id": d["variant"].id,
+                "qty": d["item"].qty,
+                "unit_price": d["item"].unit_price,
+                "discount": round(d["line_disc"] + prop_cart_disc, 2),
+                "tax": line_tax,
+                "line_total": line_total,
+                "variant_obj": d["variant"]
+            })
+
+        total_tax = round(total_tax, 2)
         total_amount = round(max(0.0, subtotal - overall_discount + total_tax), 2)
         cgst = round(total_tax / 2.0, 2)
-        sgst = round(total_tax / 2.0, 2)
+        sgst = round(total_tax - cgst, 2)
 
         # Validate payments for confirmed bill
         if req.status == BillStatus.CONFIRMED.value:

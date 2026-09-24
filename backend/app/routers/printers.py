@@ -48,6 +48,9 @@ def test_print(printer_id: int, db: Session = Depends(get_db)):
 
     payload = {
         "shop_name": settings.shop_name if settings else "SWAGZ FASHION",
+        "shop_address": settings.address if settings else "",
+        "shop_phone": settings.phone if settings else "",
+        "gstin": settings.gstin if settings else "",
         "printer_name": printer.name,
         "connection_type": printer.connection_type,
         "ip_address": printer.ip_address,

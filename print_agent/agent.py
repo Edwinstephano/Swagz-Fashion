@@ -66,77 +66,95 @@ class PrintJobPayload(BaseModel):
     port: int = 9100
 
 def generate_virtual_receipt_html(data: PrintJobPayload) -> str:
-    width_px = 300 if data.paper_width_mm == 58 else 380
-    
     items_html = ""
     for item in data.items:
+        detail_parts = []
+        if item.size:
+            detail_parts.append(f"({item.size})")
+        elif item.color:
+            detail_parts.append(f"({item.color})")
+        detail_str = f" {' '.join(detail_parts)}" if detail_parts else ""
+
         items_html += f"""
-        <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:4px;">
-            <div>
-                <strong>{item.name}</strong><br/>
-                <span style="color:#666;">Size: {item.size} | Color: {item.color} | Qty: {item.qty} x ₹{item.unit_price:.2f}</span>
-            </div>
-            <div style="font-weight:bold; text-align:right;">₹{item.line_total:.2f}</div>
+        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; margin-bottom:8px; color:#090d16;">
+            <span>{item.qty}x {item.name}{detail_str}</span>
+            <span>₹{item.line_total:,.2f}</span>
         </div>
         """
 
     payments_html = ""
-    for p in data.payments:
-        ref_text = f" ({p.ref})" if p.ref else ""
-        payments_html += f"""
-        <div style="display:flex; justify-content:space-between; font-size:11px; color:#444;">
-            <span>Payment Mode: {p.mode}{ref_text}</span>
-            <span>₹{p.amount:.2f}</span>
+    if data.payments:
+        modes = " / ".join([p.mode for p in data.payments])
+        total_paid = sum([p.amount for p in data.payments])
+        payments_html = f"""
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#334155; margin-top:4px;">
+            <span>Paid via {modes}:</span>
+            <span>₹{total_paid:,.2f}</span>
+        </div>
+        """
+    else:
+        payments_html = f"""
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:#334155; margin-top:4px;">
+            <span>Paid via UPI / Cash:</span>
+            <span>₹{data.total:,.2f}</span>
         </div>
         """
 
-    cgst_val = data.cgst if data.cgst > 0 else round(data.tax / 2.0, 2)
-    sgst_val = data.sgst if data.sgst > 0 else round(data.tax / 2.0, 2)
+    tax_val = data.tax if data.tax > 0 else (data.cgst + data.sgst)
+    tax_label = "GST (5%):" if tax_val > 0 else "GST:"
+    
+    discount_html = f"""
+    <div style="display:flex; justify-content:space-between; color:#e11d48; font-weight:600; font-size:11px; margin-bottom:4px;">
+        <span>Discount:</span>
+        <span>-₹{data.discount:,.2f}</span>
+    </div>
+    """
 
-    gst_line = f" | GSTIN: {data.gstin}" if data.gstin else ""
+    shop_address_text = data.shop_address or "Sankarapuram, Kallakurichi District, TamilNadu-605801"
+    shop_phone_text = data.shop_phone or "+91 9345611791"
+    footer_text = data.footer or "Thank you for shopping at Swagz! Menswear items once sold can be exchanged within 7 days with original tag & invoice."
+    date_str = data.date if data.date else time.strftime("%d/%m/%Y")
+
     return f"""
-    <div style="max-width:100%; width:100%; box-sizing:border-box; font-family:'Courier New', monospace; background:#fff; color:#000; padding:16px; border:1px dashed #aaa; border-radius:4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin:0 auto;">
-        <div style="text-align:center; padding-bottom:4px;">
-            <h2 style="margin:0; font-size:18px; letter-spacing:1px; font-weight:800;">{data.shop_name.upper()}</h2>
-            <div style="font-size:11px; margin-top:6px; color:#333;">{data.shop_address}</div>
-            <div style="font-size:11px; font-weight:bold; margin-top:4px;">Ph: {data.shop_phone}{gst_line}</div>
+    <div style="font-family:'Courier New', Courier, monospace; color:#090d16; width:100%; box-sizing:border-box;">
+        
+        <div style="text-align:center; padding-bottom:12px; border-bottom:1px dashed #94a3b8;">
+            <div style="font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:0.5px;">{data.shop_name}</div>
+            <div style="font-size:10px; color:#334155; margin-top:4px; max-width:260px; margin-left:auto; margin-right:auto; line-height:1.3;">{shop_address_text}</div>
+            <div style="font-size:10px; color:#334155; font-weight:bold; margin-top:4px;">Ph: {shop_phone_text}</div>
         </div>
-        
-        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
-        
-        <div style="font-size:11px; display:flex; justify-content:space-between; font-weight:bold; padding:2px 0;">
+
+        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:11px; padding:10px 0; border-bottom:1px dashed #cbd5e1;">
             <span>INVOICE: #{data.invoice_number}</span>
-            <span>{data.date}</span>
+            <span>{date_str}</span>
         </div>
-        {f'<div style="font-size:11px; margin-top:4px;">Customer: {data.customer_name} ({data.customer_phone})</div>' if data.customer_phone else ''}
 
-        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
-
-        <div style="padding:4px 0;">
+        <div style="padding:10px 0; border-bottom:1px dashed #94a3b8;">
             {items_html}
         </div>
 
-        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
-
-        <div style="font-size:12px; line-height:1.7;">
-            <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹{data.subtotal:.2f}</span></div>
-            {f'<div style="display:flex; justify-content:space-between; color:#d9534f; font-weight:600;"><span>Discount:</span><span>-₹{data.discount:.2f}</span></div>' if data.discount > 0 else '<div style="display:flex; justify-content:space-between; color:#d9534f; font-weight:600;"><span>Discount:</span><span>-₹0.00</span></div>'}
-            <div style="display:flex; justify-content:space-between;"><span>CGST:</span><span>₹{cgst_val:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between;"><span>SGST:</span><span>₹{sgst_val:.2f}</span></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px; margin-top:8px; border-top:1px solid #000; padding-top:8px;">
-                <span>NET TOTAL:</span><span>₹{data.total:.2f}</span>
+        <div style="padding:10px 0; border-bottom:1px dashed #94a3b8;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:#334155; margin-bottom:4px;">
+                <span>Subtotal:</span>
+                <span style="font-weight:bold; color:#090d16;">₹{data.subtotal:,.2f}</span>
             </div>
-        </div>
+            {discount_html}
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:#334155; margin-bottom:4px;">
+                <span>{tax_label}</span>
+                <span style="font-weight:bold; color:#090d16;">₹{tax_val:,.2f}</span>
+            </div>
 
-        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
-        <div style="padding:2px 0;">
+            <div style="display:flex; justify-content:space-between; font-weight:800; font-size:13px; color:#090d16; padding-top:6px; margin-top:4px; border-top:1px solid #94a3b8;">
+                <span>NET TOTAL:</span>
+                <span>₹{data.total:,.2f}</span>
+            </div>
             {payments_html}
         </div>
-        <div style="border-bottom:1px dashed #000; margin:14px 0;"></div>
 
-        <div style="text-align:center; font-size:10px; font-style:italic; margin-top:12px; padding-top:4px; color:#555; line-height:1.4;">
-            {data.footer}
+        <div style="text-align:center; font-size:9px; color:#475569; font-style:italic; line-height:1.4; padding:10px 0 4px 0;">
+            {footer_text}
         </div>
+
     </div>
     """
 
@@ -238,20 +256,24 @@ def get_latest_receipt():
 @app.post("/test-print")
 def test_print(payload: dict):
     test_data = PrintJobPayload(
-        shop_name=payload.get("shop_name", "SWAGZ FASHION"),
+        shop_name=payload.get("shop_name") or "SWAGZ FASHION — MENSWEAR",
+        shop_address=payload.get("shop_address") or "Sankarapuram, Kallakurichi District, TamilNadu-605801",
+        shop_phone=payload.get("shop_phone") or "+91 9345611791",
+        gstin=payload.get("gstin") or "07SWAGZ9999F1Z9",
         invoice_number="TEST-00001",
-        date=time.strftime("%Y-%m-%d %H:%M:%S"),
+        date=time.strftime("%d/%m/%Y"),
         items=[
-            PrintItem(name="Test Item Thermal Print", size="L", color="Navy", qty=1, unit_price=999.0, line_total=999.0)
+            PrintItem(name="Signature Linen Shirt", size="L", color="White", qty=1, unit_price=2499.0, line_total=2499.0),
+            PrintItem(name="Slim Chino Trousers", size="32", color="Navy", qty=1, unit_price=1899.0, line_total=1899.0)
         ],
-        subtotal=999.0,
-        discount=0.0,
-        tax=49.95,
-        cgst=24.97,
-        sgst=24.97,
-        total=1048.95,
-        payments=[PaymentItem(mode="TEST", amount=1048.95)],
-        footer="*** HARDWARE / VIRTUAL TEST PRINT OK ***",
+        subtotal=4398.0,
+        discount=200.0,
+        tax=209.90,
+        cgst=104.95,
+        sgst=104.95,
+        total=4407.90,
+        payments=[PaymentItem(mode="UPI / Cash", amount=4407.90)],
+        footer="Thank you for shopping at Swagz! Menswear items once sold can be exchanged within 7 days with original tag & invoice.",
         paper_width_mm=payload.get("paper_width_mm", 80)
     )
     return print_receipt(test_data)

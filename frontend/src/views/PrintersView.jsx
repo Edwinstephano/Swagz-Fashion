@@ -598,28 +598,32 @@ export default function PrintersView({ currentUser, theme }) {
 
           {/* Physical Thermal Paper Styled Container */}
           <div className={`p-4 rounded-xl border flex justify-center overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'}`}>
-            <div className="w-full max-w-[340px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-relaxed p-4 rounded-xs shadow-md border border-slate-300 space-y-4 relative overflow-hidden">
+            <div className="w-full max-w-[340px] bg-[#FFFDF7] text-slate-950 font-mono text-[11px] leading-relaxed p-4 rounded-xs shadow-md border border-slate-300 relative overflow-hidden">
 
-              {/* Receipt Header Paper Edge Notch styling */}
-              <div className="text-center space-y-1.5 border-b border-dashed border-slate-400 pb-3.5">
+              {/* SWAGZ Brand Logo */}
+              <div className="text-center pb-0 mb-1">
                 <img
                   src={swagzzWhiteLogo}
                   alt="Swagz Logo"
-                  className="h-14 w-auto max-w-[180px] mx-auto object-contain brightness-0 my-1.5"
+                  className="h-[74px] w-auto max-w-[220px] mx-auto object-contain brightness-0 mt-0.5 mb-0.5"
                 />
-                <div className="font-extrabold text-sm uppercase tracking-wide">{settings.shop_name}</div>
-                <div className="text-[10px] text-slate-700">{settings.address}</div>
-                <div className="text-[10px] text-slate-700 font-bold">Ph: {settings.phone}</div>
               </div>
 
-              {/* Sample / Live Receipt Content */}
+              {/* Receipt Content */}
               {virtualReceiptHtml ? (
                 <div
-                  className="py-1 receipt-html-container text-slate-950 font-mono text-[11px] w-full overflow-hidden [&>div]:max-w-full [&>div]:w-full [&>div]:box-border [&>div]:p-1 [&>div]:shadow-none [&>div]:border-none"
+                  className="receipt-html-container text-slate-950 font-mono text-[11px] w-full overflow-hidden mt-1"
                   dangerouslySetInnerHTML={{ __html: virtualReceiptHtml }}
                 />
               ) : (
-                <div className="space-y-4 py-1">
+                <div className="space-y-3 mt-1">
+                  <div className="text-center space-y-1 pb-3 border-b border-dashed border-slate-400">
+                    <div className="font-extrabold text-sm uppercase tracking-wide">{settings.shop_name}</div>
+                    <div className="text-[10px] text-slate-700">{settings.address}</div>
+                    <div className="text-[10px] text-slate-700 font-bold">Ph: {settings.phone}</div>
+                  </div>
+
+                  <div className="space-y-4 py-1">
                   <div className="flex justify-between text-[10px] font-bold border-b border-dashed border-slate-300 pb-2">
                     <span>INVOICE: #SWZ-2026-101</span>
                     <span>{new Date().toLocaleDateString()}</span>
@@ -663,6 +667,7 @@ export default function PrintersView({ currentUser, theme }) {
                     {settings.receipt_footer}
                   </div>
                 </div>
+              </div>
               )}
 
               <div className="text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-3">

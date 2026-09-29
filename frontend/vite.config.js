@@ -10,6 +10,12 @@ export default defineConfig({
   ],
   server: {
     port: 3005,
+    watch: {
+      // Use polling instead of inotify to avoid Linux ENOSPC file watcher limit errors
+      usePolling: true,
+      interval: 500,
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**']
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8005',

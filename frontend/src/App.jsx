@@ -51,6 +51,23 @@ export default function App() {
     return !!localStorage.getItem('token');
   });
 
+  // Validate stored token on mount — if /api/auth/me returns 401, the token is stale → auto logout
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(res => {
+      if (res.status === 401) {
+        // Token is invalid or expired — clear and force re-login
+        localStorage.removeItem('token');
+        localStorage.removeItem('swagz_user');
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    }).catch(() => {});
+  }, []);
+
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
   useEffect(() => {

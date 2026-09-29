@@ -289,11 +289,13 @@ def create_bill(
                 earned_points = int(total_amount // 100)
                 cust.loyalty_points += earned_points
 
-        # Queue Thermal Print Job
+        # Flush everything first so bill.items are visible to queue_print_job
+        db.flush()
+
+        # Queue Thermal Print Job (must be AFTER flush so bill.items is populated)
         print_info = {"print_status": "none", "print_job_id": None, "detail": "Parked bill - no print job"}
         if req.status == BillStatus.CONFIRMED.value:
             p_job, print_info = queue_print_job(bill, db)
-            db.flush()
 
         # Audit Log Entry
         audit = AuditLog(

@@ -51,6 +51,14 @@ export default function ReportsView({ theme }) {
     fetchReportData();
   }, [dateRange, filterCashier, filterCategory, filterPaymentMode, filterSalesType]);
 
+  // Auto-refresh every 2 minutes to keep dashboard live
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchReportData();
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [dateRange, filterCashier, filterCategory, filterPaymentMode, filterSalesType]);
+
   const fetchReportData = async () => {
     setIsRefreshing(true);
     try {
@@ -421,8 +429,16 @@ export default function ReportsView({ theme }) {
                 <h3 className={`text-2xl font-black font-sans ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {formatINR(kpis?.gross_sales || kpis?.today_sales)}
                 </h3>
-                <span className={`text-xs font-bold flex items-center ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                  <ArrowUpRight className="w-3.5 h-3.5" /> 12.4%
+                <span className={`text-xs font-bold flex items-center ${
+                  (kpis?.sales_change_pct || 0) >= 0
+                    ? isDark ? 'text-emerald-400' : 'text-emerald-700'
+                    : isDark ? 'text-red-400' : 'text-red-700'
+                }`}>
+                  {(kpis?.sales_change_pct || 0) >= 0
+                    ? <ArrowUpRight className="w-3.5 h-3.5" />
+                    : <ArrowDownRight className="w-3.5 h-3.5" />
+                  }
+                  {Math.abs(kpis?.sales_change_pct || 0)}%
                 </span>
               </div>
               <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{kpis?.today_count || kpis?.total_count || 0} completed invoices</p>
@@ -820,8 +836,9 @@ export default function ReportsView({ theme }) {
             </div>
 
             <div className={`p-4 rounded-xl border space-y-1 ${isDark ? 'bg-[#181B22] border-[#262A36]' : 'bg-white border-slate-200 shadow-xs'}`}>
-              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Inventory Value</span>
-              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR((kpis?.total_stock_units || 0) * 800)}</h4>
+              <span className={`text-[10px] font-mono font-bold uppercase ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Inventory Value (Cost)</span>
+              <h4 className={`text-xl font-black font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(kpis?.cogs || 0)}</h4>
+              <p className={`text-[10px] font-mono ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>Based on COGS</p>
             </div>
           </div>
 
@@ -846,19 +863,23 @@ export default function ReportsView({ theme }) {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
-                  {lowStock.map((item, idx) => (
+                  {lowStock.length === 0 ? (
+                    <tr><td colSpan={7} className={`p-8 text-center text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>✅ All products are well-stocked. No low-stock alerts.</td></tr>
+                  ) : lowStock.map((item, idx) => (
                     <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
                       <td className="p-3 font-bold">{item.product_name}</td>
                       <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{item.sku_barcode}</td>
                       <td className="p-3">{item.brand}</td>
                       <td className="p-3">{item.size}</td>
-                      <td className={`p-3 text-right font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{item.stock_qty}</td>
+                      <td className={`p-3 text-right font-bold ${item.stock_qty === 0 ? 'text-red-500' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{item.stock_qty === 0 ? 'OUT' : item.stock_qty}</td>
                       <td className="p-3 text-right">{item.reorder_level}</td>
                       <td className="p-3 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          isDark ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-red-100 text-red-800 border-red-200'
+                          item.stock_qty === 0
+                            ? isDark ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-red-100 text-red-800 border-red-300'
+                            : isDark ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-800 border-amber-200'
                         }`}>
-                          {item.status}
+                          {item.stock_qty === 0 ? '🔴 OUT OF STOCK' : '🟡 LOW STOCK'}
                         </span>
                       </td>
                     </tr>
@@ -892,10 +913,12 @@ export default function ReportsView({ theme }) {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
-                  {customerAnalytics.map((c, idx) => (
+                  {customerAnalytics.length === 0 ? (
+                    <tr><td colSpan={5} className={`p-8 text-center text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No customer data yet. Customer records are created at checkout.</td></tr>
+                  ) : customerAnalytics.map((c, idx) => (
                     <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
-                      <td className="p-3 font-bold">{c.name}</td>
-                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{c.phone}</td>
+                      <td className="p-3 font-bold">{c.name || 'Walk-in Customer'}</td>
+                      <td className={`p-3 ${isDark ? 'text-gray-400' : 'text-slate-600 font-semibold'}`}>{c.phone || '—'}</td>
                       <td className="p-3 text-right font-bold">{c.orders}</td>
                       <td className="p-3 text-right">{c.items}</td>
                       <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(c.net_spend)}</td>
@@ -1025,17 +1048,21 @@ export default function ReportsView({ theme }) {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDark ? 'divide-gray-800/40' : 'divide-slate-200'}`}>
-                  {salesCategory.map((cat, idx) => {
-                    const cogs = cat.revenue * 0.62;
-                    const profit = cat.revenue - cogs;
+                  {salesCategory.length === 0 ? (
+                    <tr><td colSpan={6} className={`p-8 text-center text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No category sales data in this period.</td></tr>
+                  ) : salesCategory.map((cat, idx) => {
+                    // Use real cost and profit from backend if available, otherwise derive from gross_margin_pct
+                    const realCogs = cat.cost != null ? cat.cost : (cat.revenue * 0.5);
+                    const realProfit = cat.profit != null ? cat.profit : (cat.revenue - realCogs);
+                    const realMargin = cat.margin_pct != null ? cat.margin_pct : (cat.revenue > 0 ? ((realProfit / cat.revenue) * 100).toFixed(1) : 0);
                     return (
                       <tr key={idx} className={isDark ? 'text-slate-200' : 'text-slate-900'}>
                         <td className="p-3 font-bold">{cat.category}</td>
                         <td className="p-3 text-right">{cat.qty} pcs</td>
                         <td className={`p-3 text-right font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{formatINR(cat.revenue)}</td>
-                        <td className={`p-3 text-right ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{formatINR(cogs)}</td>
-                        <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(profit)}</td>
-                        <td className={`p-3 text-right font-bold ${isDark ? 'text-sky-400' : 'text-sky-700'}`}>38.0%</td>
+                        <td className={`p-3 text-right ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>{formatINR(realCogs)}</td>
+                        <td className={`p-3 text-right font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{formatINR(realProfit)}</td>
+                        <td className={`p-3 text-right font-bold ${isDark ? 'text-sky-400' : 'text-sky-700'}`}>{realMargin}%</td>
                       </tr>
                     );
                   })}
@@ -1048,35 +1075,60 @@ export default function ReportsView({ theme }) {
 
       {/* SECTION 30: DRILL-DOWN MODAL */}
       {activeModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className={`p-6 rounded-2xl border max-w-xl w-full space-y-4 shadow-2xl ${
-            isDark ? 'bg-[#181B22] border-[#262A36] text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setActiveModal(null)}>
+          <div
+            className={`p-6 rounded-2xl border max-w-lg w-full space-y-4 shadow-2xl ${
+              isDark ? 'bg-[#181B22] border-[#262A36] text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={`flex justify-between items-center pb-3 border-b ${isDark ? 'border-gray-800' : 'border-slate-200'}`}>
               <h3 className="font-heading font-bold text-base flex items-center space-x-2">
                 <Search className="w-4 h-4 text-amber-500" />
-                <span>Drill-Down Details: {activeModal.type.toUpperCase()}</span>
+                <span>{
+                  activeModal.type === 'day' ? `📅 ${activeModal.data.date} — Sales Breakdown` :
+                  activeModal.type === 'product' ? `👕 ${activeModal.data.product_name}` :
+                  activeModal.type === 'cashier' ? `💼 ${activeModal.data.cashier} — Performance` :
+                  activeModal.type === 'payment' ? `💳 ${activeModal.data.mode} — Payment Details` :
+                  activeModal.type === 'category' ? `🏷️ ${activeModal.data.category}` :
+                  'Details'
+                }</span>
               </h3>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
+              <button onClick={() => setActiveModal(null)} className={`p-1.5 rounded-lg transition-all ${
+                isDark ? 'hover:bg-gray-700 text-gray-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500'
+              }`}>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-2 text-xs font-mono">
-              <pre className="p-3 rounded-xl bg-[#101217] border border-gray-800 text-amber-400 overflow-x-auto">
-                {JSON.stringify(activeModal.data, null, 2)}
-              </pre>
+            <div className={`grid grid-cols-2 gap-3 text-xs font-mono`}>
+              {Object.entries(activeModal.data).map(([key, val]) => (
+                <div key={key} className={`p-3 rounded-xl border ${
+                  isDark ? 'bg-[#101217] border-[#222631]' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className={`text-[10px] uppercase font-bold mb-1 ${isDark ? 'text-gray-500' : 'text-slate-500'}`}>
+                    {key.replace(/_/g, ' ')}
+                  </div>
+                  <div className={`font-bold truncate ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                    {typeof val === 'number'
+                      ? key.includes('pct') || key.includes('margin') || key.includes('rate')
+                        ? `${val}%`
+                        : key.includes('revenue') || key.includes('profit') || key.includes('cost') || key.includes('amount') || key.includes('discounts') || key.includes('spend') || key.includes('invoice') || key.includes('sales')
+                          ? formatINR(val)
+                          : val
+                      : String(val) || '—'
+                    }
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-xs hover:bg-amber-400"
+                className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-xs hover:bg-amber-400 cursor-pointer"
               >
-                Close View
+                Close
               </button>
             </div>
           </div>

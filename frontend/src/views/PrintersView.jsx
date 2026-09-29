@@ -148,14 +148,20 @@ export default function PrintersView({ currentUser, theme }) {
 
   const fetchPrinters = async () => {
     try {
-      const res = await fetch('/api/printers');
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/printers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) setPrinters(await res.json());
     } catch (e) { }
   };
 
   const fetchPrintJobs = async () => {
     try {
-      const res = await fetch('/api/printers/jobs');
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/printers/jobs', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const jobs = await res.json();
         setPrintJobs(jobs.slice(0, 3));
@@ -165,7 +171,10 @@ export default function PrintersView({ currentUser, theme }) {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings');
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
@@ -241,6 +250,11 @@ export default function PrintersView({ currentUser, theme }) {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setStatusMessage({ type: 'error', text: '❌ You are not logged in. Please log out and log back in as Admin.' });
+        setTimeout(() => setStatusMessage(null), 5000);
+        return;
+      }
       const res = await fetch('/api/printers', {
         method: 'POST',
         headers: {
@@ -253,13 +267,18 @@ export default function PrintersView({ currentUser, theme }) {
         setShowAddPrinterModal(false);
         fetchPrinters();
         setStatusMessage({ type: 'success', text: `Printer '${newPrinter.name}' added successfully!` });
+      } else if (res.status === 401) {
+        setStatusMessage({ type: 'error', text: '❌ Session expired. Please log out and log back in to save printers.' });
+      } else if (res.status === 403) {
+        setStatusMessage({ type: 'error', text: '❌ Only Admin users can add printers. Please log in as Admin.' });
       } else {
-        setStatusMessage({ type: 'error', text: 'Failed to add printer.' });
+        const err = await res.json().catch(() => ({}));
+        setStatusMessage({ type: 'error', text: `Failed to add printer: ${err.detail || res.statusText}` });
       }
     } catch (e) {
-      setStatusMessage({ type: 'error', text: 'Error adding printer.' });
+      setStatusMessage({ type: 'error', text: 'Error connecting to server.' });
     }
-    setTimeout(() => setStatusMessage(null), 4000);
+    setTimeout(() => setStatusMessage(null), 5000);
   };
 
   const handleAddUser = async (e) => {
@@ -623,56 +642,60 @@ export default function PrintersView({ currentUser, theme }) {
                     <div className="text-[10px] text-slate-700 font-bold">Ph: {settings.phone}</div>
                   </div>
 
-                  <div className="space-y-4 py-1">
-                  <div className="flex justify-between text-[10px] font-bold border-b border-dashed border-slate-300 pb-2">
-                    <span>INVOICE: #SWZ-2026-101</span>
-                    <span>{new Date().toLocaleDateString()}</span>
-                  </div>
+                  <div className="space-y-3 py-1">
+                    <div className="flex justify-between text-[10px] font-bold border-b border-dashed border-slate-300 pb-2">
+                      <span>INVOICE: #SWZ-2026-101</span>
+                      <span>{new Date().toLocaleDateString()}</span>
+                    </div>
 
-                  <div className="space-y-2 py-1">
-                    <div className="flex justify-between font-bold text-slate-900">
-                      <span>1x Signature Linen Shirt (L)</span>
-                      <span>₹2,499.00</span>
+                    <div className="space-y-2 py-1">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-500 border-b border-slate-200 pb-1">
+                        <span className="flex-1">ITEM</span>
+                        <span className="w-8 text-center">QTY</span>
+                        <span className="w-16 text-right">AMOUNT</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-slate-900 text-[11px]">
+                        <span className="flex-1 pr-1">Signature Linen Shirt (L)</span>
+                        <span className="w-8 text-center">1</span>
+                        <span className="w-16 text-right">₹2,499.00</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-slate-900 text-[11px]">
+                        <span className="flex-1 pr-1">Slim Chino Trousers (32)</span>
+                        <span className="w-8 text-center">1</span>
+                        <span className="w-16 text-right">₹1,899.00</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between font-bold text-slate-900">
-                      <span>1x Slim Chino Trousers (32)</span>
-                      <span>₹1,899.00</span>
-                    </div>
-                  </div>
 
-                  <div className="border-t border-b border-dashed border-slate-400 py-3 space-y-1.5 my-2">
-                    <div className="flex justify-between text-slate-700">
-                      <span>Subtotal:</span>
-                      <span className="font-bold text-slate-900">₹4,398.00</span>
+                    <div className="border-t border-b border-dashed border-slate-400 py-2.5 space-y-1.5 my-2">
+                      <div className="flex justify-between text-slate-700">
+                        <span>Subtotal:</span>
+                        <span className="font-bold text-slate-900">₹4,398.00</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600 font-semibold">
+                        <span>Discount:</span>
+                        <span>-₹200.00</span>
+                      </div>
+                      <div className="flex justify-between text-slate-700">
+                        <span>GST (5%):</span>
+                        <span className="font-bold text-slate-900">₹209.90</span>
+                      </div>
+                      <div className="flex justify-between font-extrabold text-xs text-slate-950 pt-2 border-t border-slate-400">
+                        <span>NET TOTAL:</span>
+                        <span>₹4,407.90</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-700 pt-1">
+                        <span>Payment Mode: <b>UPI</b></span>
+                        <span className="font-bold">₹4,407.90</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-rose-600 font-semibold">
-                      <span>Discount:</span>
-                      <span>-₹200.00</span>
-                    </div>
-                    <div className="flex justify-between text-slate-700">
-                      <span>GST (5%):</span>
-                      <span className="font-bold text-slate-900">₹209.90</span>
-                    </div>
-                    <div className="flex justify-between font-extrabold text-xs text-slate-950 pt-2 border-t border-slate-400">
-                      <span>NET TOTAL:</span>
-                      <span>₹4,407.90</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-slate-700 pt-1">
-                      <span>Paid via UPI / Cash:</span>
-                      <span>₹4,407.90</span>
-                    </div>
-                  </div>
 
-                  <div className="text-center text-[9px] text-slate-600 pt-2 leading-relaxed italic">
-                    {settings.receipt_footer}
+                    <div className="text-center text-[9.5px] text-slate-600 pt-1 leading-relaxed">
+                      {settings.receipt_footer}
+                      <div className="font-bold text-slate-900 text-[10px] mt-1">Thank you! Visit Again</div>
+                    </div>
                   </div>
                 </div>
-              </div>
               )}
-
-              <div className="text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300 pt-3">
-                ⚡ Auto-prints via Print Agent (Port 9101)
-              </div>
             </div>
           </div>
         </div>
@@ -996,14 +1019,18 @@ export default function PrintersView({ currentUser, theme }) {
 
               {newPrinter.connection_type === 'usb' ? (
                 <div>
-                  <label className="block mb-1">Linux Device Path</label>
+                  <label className="block mb-1">Device Path <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ml-1 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>Linux / Windows</span></label>
                   <input
                     type="text"
                     value={newPrinter.device_path}
                     onChange={(e) => setNewPrinter({ ...newPrinter, device_path: e.target.value })}
                     className={`w-full p-2.5 rounded-xl border font-mono ${isDark ? 'bg-[#15181E] border-slate-700' : 'bg-slate-50 border-slate-300'}`}
-                    placeholder="/dev/usb/lp0"
+                    placeholder="/dev/usb/lp0 or COM3"
                   />
+                  <div className={`mt-1.5 text-[10px] font-mono space-y-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <div>🐧 <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Linux / Ubuntu:</span> /dev/usb/lp0</div>
+                    <div>🪟 <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Windows:</span> COM3 &nbsp;(check Device Manager)</div>
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">

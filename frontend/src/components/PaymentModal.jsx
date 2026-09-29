@@ -272,19 +272,20 @@ export default function PaymentModal({ isOpen, onClose, cartTotals, customer, on
                 onClick={async () => {
                   if (!confirmedBillData) return;
                   try {
-                    await fetch('http://127.0.0.1:9101/print', {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`/api/bills/${confirmedBillData.id}/reprint`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        invoice_number: confirmedBillData.invoice_number,
-                        total_amount: confirmedBillData.total_amount,
-                        items: confirmedBillData.items || [],
-                        cashier_name: "Cashier Counter"
-                      })
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
                     });
-                    alert("Re-print command sent to thermal printer!");
+                    if (res.ok) {
+                      alert("Re-print command sent to thermal printer!");
+                    } else {
+                      alert("Failed to send reprint command.");
+                    }
                   } catch (e) {
-                    alert("Failed to send reprint command");
+                    alert("Failed to connect to backend server.");
                   }
                 }}
                 className={`w-full py-2.5 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
